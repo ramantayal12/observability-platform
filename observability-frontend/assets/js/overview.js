@@ -6,6 +6,13 @@
 (function() {
     'use strict';
 
+    // Check authentication first
+    const authService = AuthService.getInstance();
+    if (!authService.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     // Get singleton instances
     const eventBus = EventBus.getInstance();
     const stateManager = StateManager.getInstance();
@@ -113,126 +120,47 @@
     }
 
     /**
-     * Setup charts
+     * Setup charts using InteractiveChart component
      */
     function setupCharts() {
-        const chartConfig = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
-                    },
-                    ticks: {
-                        color: '#9FA6B2'
-                    }
-                },
-                y: {
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
-                    },
-                    ticks: {
-                        color: '#9FA6B2'
-                    }
-                }
-            }
-        };
-
-        // API Latency Chart
-        const latencyCtx = document.getElementById('latencyChart');
-        if (latencyCtx) {
-            charts.latency = new Chart(latencyCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Latency (ms)',
-                        data: [],
-                        borderColor: '#774FF8',
-                        backgroundColor: 'rgba(119, 79, 248, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: chartConfig
-            });
+        if (typeof InteractiveChart === 'undefined') {
+            console.warn('[Overview] InteractiveChart not available');
+            return;
         }
 
-        // Throughput Chart
-        const throughputCtx = document.getElementById('throughputChart');
-        if (throughputCtx) {
-            charts.throughput = new Chart(throughputCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Throughput (req/min)',
-                        data: [],
-                        borderColor: '#12B76A',
-                        backgroundColor: 'rgba(18, 183, 106, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: chartConfig
-            });
-        }
+        // API Latency Chart - multi-line by endpoint
+        charts.latency = new InteractiveChart({
+            containerId: 'latencyChartContainer',
+            unit: 'ms',
+            height: 220,
+            showLegend: true
+        });
 
-        // Error Rate Chart
-        const errorRateCtx = document.getElementById('errorRateChart');
-        if (errorRateCtx) {
-            charts.errorRate = new Chart(errorRateCtx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Error Rate',
-                        data: [],
-                        borderColor: '#F04438',
-                        backgroundColor: 'rgba(240, 68, 56, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: chartConfig
-            });
-        }
+        // Service Latency Chart - bar chart by service
+        charts.serviceLatency = new InteractiveChart({
+            containerId: 'serviceLatencyChartContainer',
+            chartType: 'bar',
+            unit: 'ms',
+            height: 220,
+            showLegend: true,
+            fill: false
+        });
 
-        // Service Latency Chart
-        const serviceLatencyCtx = document.getElementById('serviceLatencyChart');
-        if (serviceLatencyCtx) {
-            charts.serviceLatency = new Chart(serviceLatencyCtx, {
-                type: 'bar',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Avg Latency (ms)',
-                        data: [],
-                        backgroundColor: '#774FF8'
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    scales: {
-                        ...chartConfig.scales,
-                        x: {
-                            ...chartConfig.scales.x,
-                            ticks: {
-                                ...chartConfig.scales.x.ticks,
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        // Throughput Chart - multi-line by service
+        charts.throughput = new InteractiveChart({
+            containerId: 'throughputChartContainer',
+            unit: 'req/min',
+            height: 220,
+            showLegend: true
+        });
+
+        // Error Rate Chart - multi-line by service
+        charts.errorRate = new InteractiveChart({
+            containerId: 'errorRateChartContainer',
+            unit: '%',
+            height: 220,
+            showLegend: true
+        });
     }
 
     /**
@@ -277,46 +205,66 @@
     }
 
     /**
-     * Update charts with new data
+     * Update charts with new data using InteractiveChart
      */
     function updateCharts(data) {
         console.log('[Overview] Updating charts with data:', data);
-        console.log('[Overview] Available charts:', Object.keys(charts));
 
-        // Update latency chart
+        // Update latency chart - group by endpoint/service
         if (charts.latency && data.latencyData) {
-            console.log('[Overview] Updating latency chart with', data.latencyData.length, 'points');
-            charts.latency.data.labels = data.latencyData.map(d =>
-                new Date(d.timestamp).toLocaleTimeString()
-            );
-            charts.latency.data.datasets[0].data = data.latencyData.map(d => d.value);
-            charts.latency.update();
+            const seriesData = groupDataBySeries(data.latencyData, 'endpoint');
+            charts.latency.setData(seriesData);
         }
 
-        // Update throughput chart
+        // Update throughput chart - group by service
         if (charts.throughput && data.throughputData) {
-            charts.throughput.data.labels = data.throughputData.map(d => 
-                new Date(d.timestamp).toLocaleTimeString()
-            );
-            charts.throughput.data.datasets[0].data = data.throughputData.map(d => d.value);
-            charts.throughput.update();
+            const seriesData = groupDataBySeries(data.throughputData, 'serviceName');
+            charts.throughput.setData(seriesData);
         }
 
-        // Update error rate chart
+        // Update error rate chart - group by service
         if (charts.errorRate && data.errorRateData) {
-            charts.errorRate.data.labels = data.errorRateData.map(d => 
-                new Date(d.timestamp).toLocaleTimeString()
-            );
-            charts.errorRate.data.datasets[0].data = data.errorRateData.map(d => d.value);
-            charts.errorRate.update();
+            const seriesData = groupDataBySeries(data.errorRateData, 'serviceName');
+            charts.errorRate.setData(seriesData);
         }
 
-        // Update service latency chart
+        // Update service latency chart - bar chart
         if (charts.serviceLatency && data.serviceLatency) {
-            charts.serviceLatency.data.labels = data.serviceLatency.map(d => d.serviceName);
-            charts.serviceLatency.data.datasets[0].data = data.serviceLatency.map(d => d.avgLatency);
-            charts.serviceLatency.update();
+            const seriesData = {};
+            data.serviceLatency.forEach(d => {
+                seriesData[d.serviceName] = [d.avgLatency];
+            });
+            charts.serviceLatency.setData(seriesData, ['Avg Latency']);
         }
+    }
+
+    /**
+     * Group time series data by a field for multi-line charts
+     */
+    function groupDataBySeries(data, groupByField) {
+        if (!data || data.length === 0) {
+            return { 'No Data': [] };
+        }
+
+        const grouped = {};
+
+        data.forEach(item => {
+            const seriesName = item[groupByField] || item.serviceName || 'Default';
+            if (!grouped[seriesName]) {
+                grouped[seriesName] = [];
+            }
+            grouped[seriesName].push({
+                x: item.timestamp,
+                y: item.value
+            });
+        });
+
+        // Sort each series by timestamp
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => a.x - b.x);
+        });
+
+        return grouped;
     }
 
     /**

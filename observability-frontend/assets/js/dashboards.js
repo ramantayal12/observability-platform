@@ -6,6 +6,13 @@
 (function() {
     'use strict';
 
+    // Check authentication first
+    const authService = AuthService.getInstance();
+    if (!authService.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     // Get singleton instances
     const eventBus = EventBus.getInstance();
     const stateManager = StateManager.getInstance();
@@ -15,30 +22,35 @@
     // Page state
     let dashboards = [];
     let currentDashboard = null;
+    let apiDetailsTable = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Dashboards page...');
-        
+
         // Load dashboards from localStorage
         loadDashboards();
-        
+
         // Setup UI
         setupNewDashboardButton();
         setupNewWidgetButton();
         setupModals();
-        
+        setupApiDetailsTable();
+
         // Render dashboards list
         renderDashboardsList();
-        
+
         // Load first dashboard if exists
         if (dashboards.length > 0) {
             loadDashboard(dashboards[0].id);
         } else {
             showEmptyState();
         }
+
+        // Load API details
+        await loadApiDetails();
     }
 
     /**
@@ -332,41 +344,43 @@
     }
 
     /**
-     * Render timeseries widget
+     * Render timeseries widget using InteractiveChart
      */
     function renderTimeseriesWidget(container, widget, data) {
-        container.innerHTML = '<canvas id="chart-' + widget.id + '"></canvas>';
+        const chartContainerId = 'chart-container-' + widget.id;
+        container.innerHTML = `<div id="${chartContainerId}" style="height: 100%;"></div>`;
 
-        const canvas = document.getElementById('chart-' + widget.id);
-        if (!canvas) return;
+        if (typeof InteractiveChart === 'undefined') {
+            console.warn('[Dashboards] InteractiveChart not available');
+            return;
+        }
 
-        const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
-        const values = data.map(d => d.value);
-
-        new Chart(canvas, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: widget.metric,
-                    data: values,
-                    borderColor: '#774FF8',
-                    backgroundColor: 'rgba(119, 79, 248, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
+        // Group data by service for multi-line display
+        const seriesData = {};
+        data.forEach(d => {
+            const seriesName = d.serviceName || widget.metric || 'Value';
+            if (!seriesData[seriesName]) {
+                seriesData[seriesName] = [];
             }
+            seriesData[seriesName].push({
+                x: d.timestamp,
+                y: d.value
+            });
         });
+
+        // Sort each series by timestamp
+        Object.keys(seriesData).forEach(key => {
+            seriesData[key].sort((a, b) => a.x - b.x);
+        });
+
+        const chart = new InteractiveChart({
+            containerId: chartContainerId,
+            unit: widget.unit || '',
+            height: 200,
+            showLegend: true
+        });
+
+        chart.setData(seriesData);
     }
 
     /**
@@ -460,6 +474,85 @@
                 </div>
             `;
         }
+    }
+
+    /**
+     * Setup API Details Table
+     */
+    function setupApiDetailsTable() {
+        console.log('[Dashboards] Setting up API Details Table...');
+        console.log('[Dashboards] ApiDetailsTable available:', typeof ApiDetailsTable !== 'undefined');
+
+        if (typeof ApiDetailsTable !== 'undefined') {
+            try {
+                apiDetailsTable = new ApiDetailsTable({
+                    containerId: 'apiDetailsTable',
+                    title: 'API Endpoint Metrics',
+                    showFilters: true,
+                    maxRows: 50
+                });
+                console.log('[Dashboards] API Details Table initialized successfully');
+            } catch (error) {
+                console.error('[Dashboards] Error initializing API Details Table:', error);
+            }
+        } else {
+            console.warn('[Dashboards] ApiDetailsTable component not found');
+        }
+    }
+
+    /**
+     * Load API endpoint details
+     */
+    async function loadApiDetails() {
+        if (!apiDetailsTable) return;
+
+        try {
+            // Generate mock API endpoint data
+            const apiData = generateMockApiData();
+            apiDetailsTable.setData(apiData);
+        } catch (error) {
+            console.error('Error loading API details:', error);
+        }
+    }
+
+    /**
+     * Generate mock API endpoint time series data
+     */
+    function generateMockApiData() {
+        const endpoints = [
+            'GET /api/v1/metrics',
+            'POST /api/v1/metrics',
+            'GET /api/v1/logs',
+            'POST /api/v1/logs',
+            'GET /api/v1/traces',
+            'GET /api/v1/services',
+            'GET /api/v1/dashboards',
+            'GET /api/v1/alerts'
+        ];
+
+        const now = Date.now();
+        const timeSeriesData = {};
+
+        endpoints.forEach(endpoint => {
+            const dataPoints = [];
+            const baseLatency = Math.random() * 80 + 20; // 20-100ms base
+
+            // Generate 60 data points (last hour, one per minute)
+            for (let i = 60; i >= 0; i--) {
+                const timestamp = now - (i * 60 * 1000); // Go back i minutes
+                const variation = (Math.random() - 0.5) * 40; // ±20ms variation
+                const latency = Math.max(5, baseLatency + variation);
+
+                dataPoints.push({
+                    x: timestamp,
+                    y: latency
+                });
+            }
+
+            timeSeriesData[endpoint] = dataPoints;
+        });
+
+        return timeSeriesData;
     }
 
     // Initialize when DOM is ready

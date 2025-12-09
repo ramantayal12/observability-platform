@@ -6,6 +6,13 @@
 (function() {
     'use strict';
 
+    // Check authentication first
+    const authService = AuthService.getInstance();
+    if (!authService.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     // Get singleton instances
     const eventBus = EventBus.getInstance();
     const stateManager = StateManager.getInstance();

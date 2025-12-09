@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../assets/css/components.css">
     <link rel="stylesheet" href="../assets/css/dashboards.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -89,6 +90,10 @@
                 <span class="nav-text">Alerts</span>
             </a>
         </nav>
+
+        <div class="sidebar-footer" id="sidebarFooter">
+            <!-- Will be populated by auth state -->
+        </div>
     </aside>
 
     <!-- Main Content -->
@@ -96,16 +101,36 @@
         <!-- Top Bar -->
         <header class="topbar">
             <div class="topbar-left">
-                <h1 class="page-title">Dashboards</h1>
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">ObserveX</span>
+                </div>
             </div>
 
             <div class="topbar-right">
-                <button class="btn btn-primary" id="newDashboardBtn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <!-- Time Picker -->
+                <div class="time-picker">
+                    <button class="btn btn-secondary btn-sm" id="timePickerBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 11a5 5 0 110-10 5 5 0 010 10zm.5-8H7.5v4l3.5 2 .5-1-3-1.5V5z"/>
+                        </svg>
+                        <span id="timePickerLabel">Last 1 hour</span>
+                    </button>
+                    <div class="time-picker-dropdown" id="timePickerDropdown">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Auto Refresh -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
-                    New Dashboard
                 </button>
             </div>
         </header>
@@ -156,6 +181,9 @@
                     <!-- Widgets populated by JS -->
                 </div>
             </div>
+
+            <!-- API Endpoint Details -->
+            <div id="apiDetailsTable"></div>
         </div>
     </main>
 
@@ -270,10 +298,14 @@
     <script src="../core/StateManager.js"></script>
     <script src="../services/MockDataService.js"></script>
     <script src="../services/ApiService.js"></script>
+    <script src="../services/AuthService.js"></script>
     <script src="../components/BaseComponent.js"></script>
     <script src="../components/NotificationManager.js"></script>
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
+    <script src="../components/InteractiveChart.js"></script>
+    <script src="../components/ApiDetailsTable.js"></script>
+    <script src="../components/AuthUI.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/dashboards.js"></script>

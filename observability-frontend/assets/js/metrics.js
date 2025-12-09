@@ -6,6 +6,13 @@
 (function() {
     'use strict';
 
+    // Check authentication first
+    const authService = AuthService.getInstance();
+    if (!authService.isAuthenticated()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     // Get singleton instances
     const eventBus = EventBus.getInstance();
     const stateManager = StateManager.getInstance();
@@ -21,6 +28,7 @@
     };
     let autoRefreshInterval = null;
     let timeRangePicker = null;
+    let apiDetailsTable = null;
 
     /**
      * Initialize the page
@@ -32,6 +40,8 @@
         setupTimePicker();
         setupAutoRefresh();
         setupFilters();
+        initializeCharts();
+        setupApiDetailsTable();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
@@ -152,6 +162,9 @@
             // Update table
             updateTable(data);
 
+            // Load API details
+            await loadApiDetails();
+
             // Update service filter options
             updateServiceFilter(data);
 
@@ -199,18 +212,62 @@
     }
 
     /**
+     * Initialize interactive charts
+     */
+    function initializeCharts() {
+        if (typeof InteractiveChart === 'undefined') {
+            console.warn('[Metrics] InteractiveChart not available');
+            return;
+        }
+
+        // Latency Chart - multiple API endpoints
+        charts.latency = new InteractiveChart({
+            containerId: 'latencyChartContainer',
+            unit: 'ms',
+            height: 250,
+            showLegend: true
+        });
+
+        // Throughput Chart - multiple services
+        charts.throughput = new InteractiveChart({
+            containerId: 'throughputChartContainer',
+            unit: 'req/min',
+            height: 250,
+            showLegend: true
+        });
+
+        // Error Rate Chart - multiple services
+        charts.errorRate = new InteractiveChart({
+            containerId: 'errorRateChartContainer',
+            unit: '%',
+            height: 250,
+            showLegend: true
+        });
+
+        // Service Metrics Chart - bar chart
+        charts.serviceMetrics = new InteractiveChart({
+            containerId: 'serviceMetricsChartContainer',
+            chartType: 'bar',
+            unit: '',
+            height: 250,
+            showLegend: true,
+            fill: false
+        });
+    }
+
+    /**
      * Update charts
      */
     function updateCharts(data) {
         const metrics = data.metrics || {};
 
-        // Latency Chart
+        // Latency Chart - show by endpoint
         updateLatencyChart(metrics['api.latency'] || []);
 
-        // Throughput Chart
+        // Throughput Chart - show by service
         updateThroughputChart(metrics['throughput'] || []);
 
-        // Error Rate Chart
+        // Error Rate Chart - show by service
         updateErrorRateChart(metrics['error.rate'] || []);
 
         // Service Metrics Chart
@@ -218,109 +275,44 @@
     }
 
     /**
-     * Update latency chart
+     * Update latency chart with multi-series data
      */
     function updateLatencyChart(data) {
-        const ctx = document.getElementById('latencyChart');
-        if (!ctx) return;
+        if (!charts.latency) return;
 
-        if (charts.latency) {
-            charts.latency.destroy();
-        }
-
-        const chartData = prepareTimeSeriesData(data);
-
-        charts.latency = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: 'API Latency (ms)',
-                    data: chartData.values,
-                    borderColor: '#774FF8',
-                    backgroundColor: 'rgba(119, 79, 248, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: getChartOptions('ms')
-        });
+        // Group data by endpoint/service for multi-line display
+        const seriesData = groupDataBySeries(data, 'endpoint');
+        charts.latency.setData(seriesData);
     }
 
     /**
-     * Update throughput chart
+     * Update throughput chart with multi-series data
      */
     function updateThroughputChart(data) {
-        const ctx = document.getElementById('throughputChart');
-        if (!ctx) return;
+        if (!charts.throughput) return;
 
-        if (charts.throughput) {
-            charts.throughput.destroy();
-        }
-
-        const chartData = prepareTimeSeriesData(data);
-
-        charts.throughput = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: 'Throughput (req/min)',
-                    data: chartData.values,
-                    borderColor: '#12B76A',
-                    backgroundColor: 'rgba(18, 183, 106, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: getChartOptions('req/min')
-        });
+        const seriesData = groupDataBySeries(data, 'serviceName');
+        charts.throughput.setData(seriesData);
     }
 
     /**
-     * Update error rate chart
+     * Update error rate chart with multi-series data
      */
     function updateErrorRateChart(data) {
-        const ctx = document.getElementById('errorRateChart');
-        if (!ctx) return;
+        if (!charts.errorRate) return;
 
-        if (charts.errorRate) {
-            charts.errorRate.destroy();
-        }
-
-        const chartData = prepareTimeSeriesData(data);
-
-        charts.errorRate = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: chartData.labels,
-                datasets: [{
-                    label: 'Error Rate (%)',
-                    data: chartData.values,
-                    borderColor: '#F04438',
-                    backgroundColor: 'rgba(240, 68, 56, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: getChartOptions('%')
-        });
+        const seriesData = groupDataBySeries(data, 'serviceName');
+        charts.errorRate.setData(seriesData);
     }
 
     /**
      * Update service metrics chart
      */
     function updateServiceMetricsChart(data) {
-        const ctx = document.getElementById('serviceMetricsChart');
-        if (!ctx) return;
-
-        if (charts.serviceMetrics) {
-            charts.serviceMetrics.destroy();
-        }
+        if (!charts.serviceMetrics) return;
 
         // Group metrics by service
         const serviceData = {};
-        // Use allMetrics array if available, otherwise flatten metrics object
         const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
 
         allMetrics.forEach(metric => {
@@ -331,21 +323,43 @@
             serviceData[service]++;
         });
 
+        // Convert to series format for InteractiveChart
         const services = Object.keys(serviceData);
-        const counts = Object.values(serviceData);
-
-        charts.serviceMetrics = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: services,
-                datasets: [{
-                    label: 'Metric Count',
-                    data: counts,
-                    backgroundColor: '#774FF8'
-                }]
-            },
-            options: getChartOptions('count')
+        const seriesData = {};
+        services.forEach(service => {
+            seriesData[service] = [serviceData[service]];
         });
+
+        charts.serviceMetrics.setData(seriesData, ['Metric Count']);
+    }
+
+    /**
+     * Group time series data by a field for multi-line charts
+     */
+    function groupDataBySeries(data, groupByField) {
+        if (!data || data.length === 0) {
+            return { 'No Data': [] };
+        }
+
+        const grouped = {};
+
+        data.forEach(item => {
+            const seriesName = item[groupByField] || item.serviceName || 'Default';
+            if (!grouped[seriesName]) {
+                grouped[seriesName] = [];
+            }
+            grouped[seriesName].push({
+                x: item.timestamp,
+                y: item.value
+            });
+        });
+
+        // Sort each series by timestamp
+        Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => a.x - b.x);
+        });
+
+        return grouped;
     }
 
     /**
@@ -361,31 +375,6 @@
         return {
             labels: sorted.map(m => new Date(m.timestamp).toLocaleTimeString()),
             values: sorted.map(m => m.value)
-        };
-    }
-
-    /**
-     * Get chart options
-     */
-    function getChartOptions(unit) {
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value + ' ' + unit;
-                        }
-                    }
-                }
-            }
         };
     }
 
@@ -456,6 +445,85 @@
         return sorted[index] || 0;
     }
 
+    /**
+     * Setup API Details Table
+     */
+    function setupApiDetailsTable() {
+        console.log('[Metrics] Setting up API Details Table...');
+        console.log('[Metrics] ApiDetailsTable available:', typeof ApiDetailsTable !== 'undefined');
+
+        if (typeof ApiDetailsTable !== 'undefined') {
+            try {
+                apiDetailsTable = new ApiDetailsTable({
+                    containerId: 'apiDetailsTable',
+                    title: 'API Endpoint Metrics',
+                    showFilters: true,
+                    maxRows: 50
+                });
+                console.log('[Metrics] API Details Table initialized successfully');
+            } catch (error) {
+                console.error('[Metrics] Error initializing API Details Table:', error);
+            }
+        } else {
+            console.warn('[Metrics] ApiDetailsTable component not found');
+        }
+    }
+
+    /**
+     * Load API endpoint details
+     */
+    async function loadApiDetails() {
+        if (!apiDetailsTable) return;
+
+        try {
+            // Generate mock API endpoint data
+            const apiData = generateMockApiData();
+            apiDetailsTable.setData(apiData);
+        } catch (error) {
+            console.error('Error loading API details:', error);
+        }
+    }
+
+    /**
+     * Generate mock API endpoint time series data
+     */
+    function generateMockApiData() {
+        const endpoints = [
+            'GET /api/v1/metrics',
+            'POST /api/v1/metrics',
+            'GET /api/v1/logs',
+            'POST /api/v1/logs',
+            'GET /api/v1/traces',
+            'GET /api/v1/services',
+            'GET /api/v1/dashboards',
+            'GET /api/v1/alerts'
+        ];
+
+        const now = Date.now();
+        const timeSeriesData = {};
+
+        endpoints.forEach(endpoint => {
+            const dataPoints = [];
+            const baseLatency = Math.random() * 80 + 20; // 20-100ms base
+
+            // Generate 60 data points (last hour, one per minute)
+            for (let i = 60; i >= 0; i--) {
+                const timestamp = now - (i * 60 * 1000); // Go back i minutes
+                const variation = (Math.random() - 0.5) * 40; // ±20ms variation
+                const latency = Math.max(5, baseLatency + variation);
+
+                dataPoints.push({
+                    x: timestamp,
+                    y: latency
+                });
+            }
+
+            timeSeriesData[endpoint] = dataPoints;
+        });
+
+        return timeSeriesData;
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -467,6 +535,9 @@
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
         Object.values(charts).forEach(chart => chart && chart.destroy());
+        if (apiDetailsTable) {
+            apiDetailsTable.destroy();
+        }
     });
 
 })();
