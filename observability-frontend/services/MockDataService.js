@@ -248,8 +248,11 @@ class MockDataService {
     getLogs(params = {}) {
         const count = params.limit || 50;
         const logs = [];
-        const now = Date.now();
+        const endTime = params.endTime || Date.now();
+        const startTime = params.startTime || (endTime - 3600000); // Default 1 hour
+        const timeRange = endTime - startTime;
         const levels = ['INFO', 'WARN', 'ERROR', 'DEBUG'];
+        const levelWeights = [0.6, 0.2, 0.1, 0.1]; // 60% INFO, 20% WARN, 10% ERROR, 10% DEBUG
         const messages = [
             'Request processed successfully',
             'Database connection established',
@@ -264,7 +267,18 @@ class MockDataService {
         ];
 
         for (let i = 0; i < count; i++) {
-            const level = levels[Math.floor(Math.random() * levels.length)];
+            // Spread logs across the time range with some randomness
+            const randomOffset = Math.random() * timeRange;
+            const timestamp = startTime + randomOffset;
+
+            // Weighted level selection
+            const rand = Math.random();
+            let level;
+            if (rand < levelWeights[0]) level = 'INFO';
+            else if (rand < levelWeights[0] + levelWeights[1]) level = 'WARN';
+            else if (rand < levelWeights[0] + levelWeights[1] + levelWeights[2]) level = 'ERROR';
+            else level = 'DEBUG';
+
             const service = this.services[Math.floor(Math.random() * this.services.length)];
             const servicePods = this.pods.filter(p => p.service === service);
             const pod = servicePods.length > 0 ? servicePods[Math.floor(Math.random() * servicePods.length)] : this.pods[0];
@@ -272,7 +286,7 @@ class MockDataService {
             const container = podContainers.length > 0 ? podContainers[Math.floor(Math.random() * podContainers.length)] : this.containers[0];
 
             logs.push({
-                timestamp: now - (i * 5000),
+                timestamp,
                 level,
                 serviceName: service,
                 message: messages[Math.floor(Math.random() * messages.length)],
@@ -283,6 +297,9 @@ class MockDataService {
                 node: pod.node
             });
         }
+
+        // Sort by timestamp descending (most recent first)
+        logs.sort((a, b) => b.timestamp - a.timestamp);
 
         return { logs };
     }
@@ -347,15 +364,60 @@ class MockDataService {
      */
     getServices() {
         const now = Date.now();
+        const podStatuses = ['running', 'starting', 'degraded', 'terminated'];
+
         const services = this.services.map((name, index) => {
             const errorRate = this.randomValue(0, 15);
             const lastSeen = now - this.randomInt(0, 60000);
             const timeSinceLastSeen = now - lastSeen;
-            
+
             let status = 'healthy';
             if (timeSinceLastSeen > 300000) status = 'down';
             else if (timeSinceLastSeen > 60000 || errorRate > 10) status = 'degraded';
-            
+
+            // Get pods for this service
+            const servicePods = this.pods.filter(p => p.service === name);
+            const pods = servicePods.map(pod => {
+                // Determine pod status based on service status and randomness
+                let podStatus = 'running';
+                if (status === 'down') {
+                    podStatus = Math.random() > 0.3 ? 'terminated' : 'degraded';
+                } else if (status === 'degraded') {
+                    podStatus = Math.random() > 0.5 ? 'degraded' : 'running';
+                } else {
+                    // Healthy service - mostly running pods, occasionally starting
+                    podStatus = Math.random() > 0.9 ? 'starting' : 'running';
+                }
+
+                // Get containers for this pod
+                const podContainers = this.containers.filter(c => c.pod === pod.name);
+                const containers = podContainers.map(container => ({
+                    name: container.name,
+                    image: container.image,
+                    status: podStatus === 'running' ? 'running' :
+                            podStatus === 'starting' ? (Math.random() > 0.5 ? 'waiting' : 'running') :
+                            podStatus === 'degraded' ? 'crashLoopBackOff' : 'terminated',
+                    restarts: podStatus === 'degraded' ? this.randomInt(3, 15) : this.randomInt(0, 2),
+                    cpu: `${this.randomInt(10, 80)}m`,
+                    memory: `${this.randomInt(64, 512)}Mi`,
+                    ready: podStatus === 'running'
+                }));
+
+                return {
+                    name: pod.name,
+                    node: pod.node,
+                    status: podStatus,
+                    ready: podStatus === 'running' ? `${containers.length}/${containers.length}` :
+                           podStatus === 'starting' ? `0/${containers.length}` :
+                           `${Math.floor(containers.length / 2)}/${containers.length}`,
+                    restarts: containers.reduce((sum, c) => sum + c.restarts, 0),
+                    age: this.formatAge(now - this.randomInt(3600000, 86400000 * 7)),
+                    cpu: `${this.randomInt(20, 200)}m`,
+                    memory: `${this.randomInt(128, 1024)}Mi`,
+                    containers: containers
+                };
+            });
+
             return {
                 name,
                 status,
@@ -363,7 +425,15 @@ class MockDataService {
                 logCount: this.randomInt(100, 1000),
                 traceCount: this.randomInt(20, 100),
                 errorRate,
-                lastSeen
+                lastSeen,
+                pods: pods,
+                podSummary: {
+                    total: pods.length,
+                    running: pods.filter(p => p.status === 'running').length,
+                    starting: pods.filter(p => p.status === 'starting').length,
+                    degraded: pods.filter(p => p.status === 'degraded').length,
+                    terminated: pods.filter(p => p.status === 'terminated').length
+                }
             };
         });
 
@@ -374,6 +444,20 @@ class MockDataService {
             degraded: services.filter(s => s.status === 'degraded').length,
             down: services.filter(s => s.status === 'down').length
         };
+    }
+
+    /**
+     * Format age string
+     */
+    formatAge(ms) {
+        const seconds = Math.floor(ms / 1000);
+        if (seconds < 60) return `${seconds}s`;
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h`;
+        const days = Math.floor(hours / 24);
+        return `${days}d`;
     }
 
     /**

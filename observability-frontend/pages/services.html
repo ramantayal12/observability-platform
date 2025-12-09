@@ -176,6 +176,51 @@
                 </div>
             </div>
         </div>
+
+        <!-- Service Detail Panel (Slide-in) -->
+        <div class="service-detail-panel" id="serviceDetailPanel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span class="service-name" id="panelServiceName">Service</span>
+                    <span class="service-status-badge" id="panelServiceStatus">Healthy</span>
+                </div>
+                <button class="panel-close" id="closeServicePanel">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="panel-content">
+                <!-- Pod Summary -->
+                <div class="pod-summary" id="podSummary">
+                    <div class="pod-stat running">
+                        <span class="pod-stat-value" id="runningPods">0</span>
+                        <span class="pod-stat-label">Running</span>
+                    </div>
+                    <div class="pod-stat starting">
+                        <span class="pod-stat-value" id="startingPods">0</span>
+                        <span class="pod-stat-label">Starting</span>
+                    </div>
+                    <div class="pod-stat degraded">
+                        <span class="pod-stat-value" id="degradedPods">0</span>
+                        <span class="pod-stat-label">Degraded</span>
+                    </div>
+                    <div class="pod-stat terminated">
+                        <span class="pod-stat-value" id="terminatedPods">0</span>
+                        <span class="pod-stat-label">Terminated</span>
+                    </div>
+                </div>
+
+                <!-- Pods List -->
+                <div class="pods-section">
+                    <h4 class="section-title">Pods</h4>
+                    <div class="pods-list" id="podsList">
+                        <!-- Pods will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Core Scripts -->

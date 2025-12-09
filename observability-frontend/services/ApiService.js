@@ -10,8 +10,11 @@ class ApiService {
         this.retryAttempts = AppConfig.API.RETRY_ATTEMPTS;
         this.cache = new Map();
         this.pendingRequests = new Map();
-        this.useMockData = AppConfig.API.USE_MOCK_DATA;
-        this.mockService = this.useMockData ? MockDataService.getInstance() : null;
+        // Determine which endpoints to use based on mode
+        this.mode = AppConfig.API.MODE || 'mock';
+        this.endpoints = this.mode === 'real'
+            ? AppConfig.API.ENDPOINTS.REAL
+            : AppConfig.API.ENDPOINTS.MOCK;
     }
 
     /**
@@ -184,34 +187,25 @@ class ApiService {
      * @returns {Promise} Overview data
      */
     async fetchOverview(filters = {}) {
-        console.log('[ApiService] fetchOverview called, useMockData:', this.useMockData, 'filters:', filters);
+        console.log('[ApiService] fetchOverview called, mode:', this.mode, 'filters:', filters);
         stateManager.set('loading.metrics', true);
         stateManager.set('errors.metrics', null);
 
         try {
-            let data;
-            if (this.useMockData) {
-                console.log('[ApiService] Using mock data...');
-                await this.delay(300); // Simulate network delay
+            // Convert timeRange to startTime/endTime for API
+            const endTime = Date.now();
+            const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
 
-                // Convert timeRange to startTime/endTime
-                const endTime = Date.now();
-                const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+            const params = {
+                startTime,
+                endTime,
+                ...this.buildFilterParams(filters)
+            };
 
-                data = this.mockService.getOverview({
-                    startTime,
-                    endTime,
-                    ...filters
-                });
-                console.log('[ApiService] Mock data received:', data);
-            } else {
-                console.log('[ApiService] Using real backend...');
-                const params = this.buildFilterParams(filters);
-                data = await this.request(AppConfig.API.ENDPOINTS.OVERVIEW, {
-                    params,
-                    cache: false
-                });
-            }
+            const data = await this.request(this.endpoints.OVERVIEW, {
+                params,
+                cache: false
+            });
 
             stateManager.set('cache.overview', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'overview', data });
@@ -239,17 +233,19 @@ class ApiService {
         stateManager.set('errors.metrics', null);
 
         try {
-            let data;
-            if (this.useMockData) {
-                await this.delay(300);
-                data = this.mockService.getMetrics(filters);
-            } else {
-                const params = this.buildFilterParams(filters);
-                data = await this.request(AppConfig.API.ENDPOINTS.METRICS, {
-                    params,
-                    cache: false
-                });
-            }
+            const endTime = Date.now();
+            const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+
+            const params = {
+                startTime,
+                endTime,
+                ...this.buildFilterParams(filters)
+            };
+
+            const data = await this.request(this.endpoints.METRICS, {
+                params,
+                cache: false
+            });
 
             stateManager.set('cache.metrics', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'metrics', data });
@@ -275,17 +271,20 @@ class ApiService {
         stateManager.set('errors.logs', null);
 
         try {
-            let data;
-            if (this.useMockData) {
-                await this.delay(300);
-                data = this.mockService.getLogs(filters);
-            } else {
-                const params = this.buildFilterParams(filters);
-                data = await this.request(AppConfig.API.ENDPOINTS.LOGS, {
-                    params,
-                    cache: false
-                });
-            }
+            const endTime = Date.now();
+            const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+
+            const params = {
+                startTime,
+                endTime,
+                limit: filters.limit || 50,
+                ...this.buildFilterParams(filters)
+            };
+
+            const data = await this.request(this.endpoints.LOGS, {
+                params,
+                cache: false
+            });
 
             stateManager.set('cache.logs', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'logs', data });
@@ -311,17 +310,20 @@ class ApiService {
         stateManager.set('errors.traces', null);
 
         try {
-            let data;
-            if (this.useMockData) {
-                await this.delay(300);
-                data = this.mockService.getTraces(filters);
-            } else {
-                const params = this.buildFilterParams(filters);
-                data = await this.request(AppConfig.API.ENDPOINTS.TRACES, {
-                    params,
-                    cache: false
-                });
-            }
+            const endTime = Date.now();
+            const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+
+            const params = {
+                startTime,
+                endTime,
+                limit: filters.limit || 20,
+                ...this.buildFilterParams(filters)
+            };
+
+            const data = await this.request(this.endpoints.TRACES, {
+                params,
+                cache: false
+            });
 
             stateManager.set('cache.traces', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'traces', data });
@@ -346,16 +348,9 @@ class ApiService {
         stateManager.set('errors.services', null);
 
         try {
-            let data;
-            if (this.useMockData) {
-                await this.delay(300);
-                data = this.mockService.getServices();
-            } else {
-                data = await this.request(`${AppConfig.API.BASE_URL}/dashboard/services`, {
-                    cache: true,
-                    cacheTTL: 30000
-                });
-            }
+            const data = await this.request(this.endpoints.SERVICES, {
+                cache: false
+            });
 
             stateManager.set('cache.services', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'services', data });
@@ -378,16 +373,7 @@ class ApiService {
      */
     async fetchTrace(traceId) {
         try {
-            let data;
-            if (this.useMockData) {
-                await this.delay(200);
-                data = this.mockService.getTrace(traceId);
-            } else {
-                data = await this.request(`${AppConfig.API.BASE_URL}/dashboard/traces/${traceId}`, {
-                    cache: true,
-                    cacheTTL: 60000
-                });
-            }
+            const data = await this.request(`${this.endpoints.TRACES}/${traceId}`);
             return data;
         } catch (error) {
             console.error('Error fetching trace:', error);

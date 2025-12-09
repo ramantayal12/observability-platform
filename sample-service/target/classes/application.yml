@@ -1,17 +1,39 @@
+spring:
+  application:
+    name: order-service
+
 server:
   port: 8081
 
-spring:
-  application:
-    name: sample-service
-
-# Observability Configuration
+# Observability SDK Configuration
 observability:
-  backend-url: http://localhost:8080
-  service-name: sample-service
-  api-key: demo-api-key-12345
+  enabled: true
+  endpoint: http://localhost:8080  # Observability backend URL
+  environment: development
+  
+  # Optional: Override auto-detected values
+  # pod-name: order-service-pod-abc123
+  # container-name: order-service
+  # node-name: node-1
+  
+  metrics:
+    enabled: true
+    export-interval-seconds: 10
+    include-jvm-metrics: true
+    include-http-metrics: true
+  
+  tracing:
+    enabled: true
+    sampling-rate: 1.0  # 100% - sample all requests
+    propagate-context: true
+  
+  logging:
+    enabled: true
+    min-level: INFO
+    include-trace-context: true
 
 logging:
   level:
-    com.sample: INFO
-    com.observability: INFO
+    com.example: DEBUG
+    com.observability.sdk: INFO
+

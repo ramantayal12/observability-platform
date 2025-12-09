@@ -3,25 +3,36 @@ package com.observability.controller;
 import com.observability.model.LogEntry;
 import com.observability.model.MetricData;
 import com.observability.model.Span;
-import com.observability.service.DataStore;
+import com.observability.service.LogService;
+import com.observability.service.MetricService;
+import com.observability.service.TraceService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Simple REST API for ingesting telemetry data
+ * Alternative to OTLP for simpler integrations
+ */
 @RestController
 @RequestMapping("/api/ingest")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Slf4j
 public class DataIngestionController {
 
-    private final DataStore dataStore;
+    private final MetricService metricService;
+    private final LogService logService;
+    private final TraceService traceService;
 
     @PostMapping("/metrics")
     public ResponseEntity<Map<String, String>> ingestMetrics(@RequestBody List<MetricData> metrics) {
-        metrics.forEach(dataStore::addMetric);
+        metricService.saveMetrics(metrics);
+        log.info("Ingested {} metrics via REST API", metrics.size());
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Ingested " + metrics.size() + " metrics"));
@@ -29,7 +40,8 @@ public class DataIngestionController {
 
     @PostMapping("/logs")
     public ResponseEntity<Map<String, String>> ingestLogs(@RequestBody List<LogEntry> logs) {
-        logs.forEach(dataStore::addLog);
+        logService.saveLogs(logs);
+        log.info("Ingested {} logs via REST API", logs.size());
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Ingested " + logs.size() + " logs"));
@@ -37,7 +49,8 @@ public class DataIngestionController {
 
     @PostMapping("/spans")
     public ResponseEntity<Map<String, String>> ingestSpans(@RequestBody List<Span> spans) {
-        spans.forEach(dataStore::addSpan);
+        traceService.saveSpans(spans);
+        log.info("Ingested {} spans via REST API", spans.size());
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Ingested " + spans.size() + " spans"));

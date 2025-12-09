@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,4 +19,8 @@ public class LogEntry {
     private String logger; // logger name
     private String traceId; // optional trace ID for correlation
     private String spanId; // optional span ID for correlation
+    private String pod; // Kubernetes pod name
+    private String container; // Container name
+    private String node; // Kubernetes node name
+    private Map<String, String> attributes; // Additional attributes
 }

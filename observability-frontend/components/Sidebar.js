@@ -87,6 +87,17 @@ class Sidebar {
     init() {
         this.render();
         this.attachEventListeners();
+        this.restoreState();
+    }
+
+    restoreState() {
+        const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+        if (isCollapsed) {
+            const sidebar = document.getElementById('appSidebar');
+            if (sidebar) {
+                sidebar.classList.add('collapsed');
+            }
+        }
     }
     
     render() {
@@ -127,10 +138,10 @@ class Sidebar {
             if (item.divider) {
                 return '<div class="nav-divider"></div>';
             }
-            
+
             const isActive = item.id === this.currentPage ? 'active' : '';
             return `
-                <a href="${item.href}" class="nav-link ${isActive}">
+                <a href="${item.href}" class="nav-link ${isActive}" data-tooltip="${item.label}">
                     ${item.icon}
                     <span class="nav-text">${item.label}</span>
                 </a>

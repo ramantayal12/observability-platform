@@ -7,13 +7,25 @@ const AppConfig = {
     // API Configuration
     API: {
         BASE_URL: 'http://localhost:8080/api',
-        USE_MOCK_DATA: true, // Set to false to use real backend
+        // Use mock endpoints from backend (set to 'real' to use actual telemetry data)
+        MODE: 'mock', // 'mock' or 'real'
         ENDPOINTS: {
-            OVERVIEW: '/dashboard/overview',
-            METRICS: '/dashboard/metrics',
-            LOGS: '/dashboard/logs',
-            TRACES: '/dashboard/traces',
-            SERVICES: '/services'
+            // Mock endpoints (generated data from backend)
+            MOCK: {
+                OVERVIEW: '/mock/overview',
+                METRICS: '/mock/metrics',
+                LOGS: '/mock/logs',
+                TRACES: '/mock/traces',
+                SERVICES: '/mock/services'
+            },
+            // Real endpoints (actual telemetry data from database)
+            REAL: {
+                OVERVIEW: '/dashboard/overview',
+                METRICS: '/dashboard/metrics',
+                LOGS: '/dashboard/logs',
+                TRACES: '/dashboard/traces',
+                SERVICES: '/dashboard/services'
+            }
         },
         TIMEOUT: 30000,
         RETRY_ATTEMPTS: 3

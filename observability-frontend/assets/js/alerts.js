@@ -381,6 +381,23 @@
         const priorities = ['critical', 'high', 'medium', 'low'];
         const states = ['open', 'acknowledged', 'closed'];
 
+        // Pod and container mappings
+        const podsByService = {
+            'api-gateway': ['api-gateway-7d8f9c6b5-x2k4m', 'api-gateway-7d8f9c6b5-p9n3q'],
+            'user-service': ['user-service-5c4d3b2a1-h7j8k', 'user-service-5c4d3b2a1-m4n5p'],
+            'order-service': ['order-service-8a7b6c5d-r4t5y', 'order-service-8a7b6c5d-u6i7o'],
+            'payment-service': ['payment-service-9e8f7g6h-q1w2e', 'payment-service-9e8f7g6h-r3t4y'],
+            'inventory-service': ['inventory-service-2b3c4d5e-a1s2d', 'inventory-service-2b3c4d5e-f3g4h']
+        };
+
+        const containersByService = {
+            'api-gateway': ['api-gateway', 'envoy-proxy'],
+            'user-service': ['user-service', 'redis-cache'],
+            'order-service': ['order-service', 'order-worker'],
+            'payment-service': ['payment-service', 'payment-validator'],
+            'inventory-service': ['inventory-service', 'stock-sync']
+        };
+
         incidents = [];
 
         // Generate incidents based on policies
@@ -392,6 +409,8 @@
                     const isRecent = i === 0;
                     const source = policy.service === 'All' ? services[Math.floor(Math.random() * services.length)] : policy.service;
                     const traceId = generateHexId(32);
+                    const pods = podsByService[source] || podsByService['api-gateway'];
+                    const containers = containersByService[source] || containersByService['api-gateway'];
                     incidents.push({
                         id: `inc-${policy.id}-${i}`,
                         policyId: policy.id,
@@ -402,6 +421,8 @@
                                   policy.severity === 'warning' ? 'high' : 'medium',
                         state: isRecent ? (Math.random() > 0.5 ? 'open' : 'acknowledged') : 'closed',
                         source: source,
+                        pod: pods[Math.floor(Math.random() * pods.length)],
+                        container: containers[Math.floor(Math.random() * containers.length)],
                         openedAt: policy.lastTriggered - (i * 3600000),
                         acknowledgedAt: isRecent ? null : policy.lastTriggered - (i * 3600000) + 300000,
                         closedAt: isRecent ? null : policy.lastTriggered - (i * 3600000) + 1800000,
@@ -419,6 +440,8 @@
             const openedAt = Date.now() - Math.floor(Math.random() * 86400000);
             const source = services[Math.floor(Math.random() * services.length)];
             const traceId = generateHexId(32);
+            const pods = podsByService[source] || podsByService['api-gateway'];
+            const containers = containersByService[source] || containersByService['api-gateway'];
             incidents.push({
                 id: `inc-random-${i}`,
                 policyId: null,
@@ -428,6 +451,8 @@
                 priority: priorities[Math.floor(Math.random() * priorities.length)],
                 state: state,
                 source: source,
+                pod: pods[Math.floor(Math.random() * pods.length)],
+                container: containers[Math.floor(Math.random() * containers.length)],
                 openedAt: openedAt,
                 acknowledgedAt: state !== 'open' ? openedAt + 300000 : null,
                 closedAt: state === 'closed' ? openedAt + 1800000 : null,
@@ -546,6 +571,50 @@
 
             sourceFacet.setItems(sortedSources);
             sourceFacet.setSelectedValues(currentFilters.sources);
+        }
+
+        // Pod facet
+        if (podFacet) {
+            const podCounts = {};
+            incidents.forEach(i => {
+                if (i.pod) {
+                    podCounts[i.pod] = (podCounts[i.pod] || 0) + 1;
+                }
+            });
+
+            const sortedPods = Object.entries(podCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .map(([pod, count]) => ({
+                    value: pod,
+                    label: pod.length > 30 ? pod.substring(0, 27) + '...' : pod,
+                    count: count
+                }));
+
+            podFacet.setItems(sortedPods);
+            podFacet.setSelectedValues(currentFilters.pods);
+        }
+
+        // Container facet
+        if (containerFacet) {
+            const containerCounts = {};
+            incidents.forEach(i => {
+                if (i.container) {
+                    containerCounts[i.container] = (containerCounts[i.container] || 0) + 1;
+                }
+            });
+
+            const sortedContainers = Object.entries(containerCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 15)
+                .map(([container, count]) => ({
+                    value: container,
+                    label: container,
+                    count: count
+                }));
+
+            containerFacet.setItems(sortedContainers);
+            containerFacet.setSelectedValues(currentFilters.containers);
         }
     }
 

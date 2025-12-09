@@ -6,11 +6,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="observability-client" />
         <module name="observability-backend" />
-        <module name="sample-service" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="observability-client" target="17" />
+      <module name="sample-service" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

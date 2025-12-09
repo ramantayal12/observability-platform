@@ -24,6 +24,7 @@
     let services = [];
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
     let timeRangePicker = null;
+    let selectedService = null;
 
     /**
      * Initialize the page
@@ -34,6 +35,7 @@
         // Setup UI
         setupTimePicker();
         setupAutoRefresh();
+        setupServicePanel();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
@@ -181,6 +183,17 @@
         }
 
         grid.innerHTML = services.map(service => renderServiceCard(service)).join('');
+
+        // Add click handlers to service cards
+        grid.querySelectorAll('.service-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const serviceName = card.dataset.serviceName;
+                const service = services.find(s => s.name === serviceName);
+                if (service) {
+                    showServiceDetails(service);
+                }
+            });
+        });
     }
 
     /**
@@ -190,9 +203,11 @@
         const statusClass = `status-${service.status}`;
         const statusIcon = getStatusIcon(service.status);
         const timeSinceLastSeen = getTimeSince(service.lastSeen);
+        const isSelected = selectedService && selectedService.name === service.name;
+        const podSummary = service.podSummary || { total: 0, running: 0, starting: 0, degraded: 0, terminated: 0 };
 
         return `
-            <div class="service-card ${statusClass}">
+            <div class="service-card ${statusClass} ${isSelected ? 'selected' : ''}" data-service-name="${service.name}">
                 <div class="service-header">
                     <div class="service-icon">
                         ${statusIcon}
@@ -203,13 +218,13 @@
                         </span>
                     </div>
                 </div>
-                
+
                 <h3 class="service-name">${service.name}</h3>
-                
+
                 <div class="service-stats">
                     <div class="service-stat">
-                        <span class="stat-label">Metrics</span>
-                        <span class="stat-value">${service.metricCount || 0}</span>
+                        <span class="stat-label">Pods</span>
+                        <span class="stat-value">${podSummary.running}/${podSummary.total}</span>
                     </div>
                     <div class="service-stat">
                         <span class="stat-label">Logs</span>
@@ -220,7 +235,7 @@
                         <span class="stat-value">${service.traceCount || 0}</span>
                     </div>
                 </div>
-                
+
                 <div class="service-footer">
                     <div class="service-error-rate">
                         <span class="label">Error Rate:</span>
@@ -231,6 +246,135 @@
                         <span class="value">${timeSinceLastSeen}</span>
                     </div>
                 </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Setup service detail panel
+     */
+    function setupServicePanel() {
+        const closeBtn = document.getElementById('closeServicePanel');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                closeServicePanel();
+            });
+        }
+    }
+
+    /**
+     * Show service details in panel
+     */
+    function showServiceDetails(service) {
+        selectedService = service;
+
+        // Update panel header
+        document.getElementById('panelServiceName').textContent = service.name;
+        const statusBadge = document.getElementById('panelServiceStatus');
+        statusBadge.textContent = service.status.charAt(0).toUpperCase() + service.status.slice(1);
+        statusBadge.className = `service-status-badge ${service.status}`;
+
+        // Update pod summary
+        const podSummary = service.podSummary || { total: 0, running: 0, starting: 0, degraded: 0, terminated: 0 };
+        document.getElementById('runningPods').textContent = podSummary.running;
+        document.getElementById('startingPods').textContent = podSummary.starting;
+        document.getElementById('degradedPods').textContent = podSummary.degraded;
+        document.getElementById('terminatedPods').textContent = podSummary.terminated;
+
+        // Render pods list
+        renderPodsList(service.pods || []);
+
+        // Show panel
+        document.getElementById('serviceDetailPanel').classList.add('active');
+
+        // Update selected state on cards
+        document.querySelectorAll('.service-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.serviceName === service.name);
+        });
+    }
+
+    /**
+     * Close service panel
+     */
+    function closeServicePanel() {
+        document.getElementById('serviceDetailPanel').classList.remove('active');
+        selectedService = null;
+        document.querySelectorAll('.service-card.selected').forEach(card => {
+            card.classList.remove('selected');
+        });
+    }
+
+    /**
+     * Render pods list
+     */
+    function renderPodsList(pods) {
+        const container = document.getElementById('podsList');
+        if (!container) return;
+
+        if (pods.length === 0) {
+            container.innerHTML = '<div class="empty-state">No pods found</div>';
+            return;
+        }
+
+        container.innerHTML = pods.map(pod => `
+            <div class="pod-card" data-pod-name="${pod.name}">
+                <div class="pod-card-header" onclick="this.parentElement.classList.toggle('expanded')">
+                    <div class="pod-info">
+                        <span class="pod-name">${pod.name}</span>
+                        <div class="pod-meta">
+                            <span>Node: ${pod.node}</span>
+                            <span>Ready: ${pod.ready}</span>
+                            <span>Age: ${pod.age}</span>
+                        </div>
+                    </div>
+                    <span class="pod-status-badge ${pod.status}">${pod.status}</span>
+                </div>
+                <div class="pod-card-details">
+                    <div class="pod-resources">
+                        <div class="pod-resource">
+                            <span class="label">CPU</span>
+                            <span class="value">${pod.cpu}</span>
+                        </div>
+                        <div class="pod-resource">
+                            <span class="label">Memory</span>
+                            <span class="value">${pod.memory}</span>
+                        </div>
+                        <div class="pod-resource">
+                            <span class="label">Restarts</span>
+                            <span class="value ${pod.restarts > 5 ? 'error' : ''}">${pod.restarts}</span>
+                        </div>
+                        <div class="pod-resource">
+                            <span class="label">Status</span>
+                            <span class="value">${pod.status}</span>
+                        </div>
+                    </div>
+                    ${renderContainersList(pod.containers || [])}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Render containers list for a pod
+     */
+    function renderContainersList(containers) {
+        if (containers.length === 0) return '';
+
+        return `
+            <div class="containers-section">
+                <div class="containers-title">Containers (${containers.length})</div>
+                ${containers.map(container => `
+                    <div class="container-item">
+                        <div class="container-info">
+                            <span class="container-name">${container.name}</span>
+                            <span class="container-image">${container.image}</span>
+                        </div>
+                        <div class="container-status">
+                            <span class="container-status-dot ${container.status}"></span>
+                            <span class="container-restarts ${container.restarts > 5 ? 'high' : ''}">${container.restarts} restarts</span>
+                        </div>
+                    </div>
+                `).join('')}
             </div>
         `;
     }

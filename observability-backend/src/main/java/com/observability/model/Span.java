@@ -20,5 +20,10 @@ public class Span {
     private long endTime; // epoch milliseconds
     private long duration; // milliseconds
     private String serviceName;
-    private Map<String, String> tags; // additional metadata
+    private String status; // OK, ERROR
+    private String kind; // SERVER, CLIENT, INTERNAL, PRODUCER, CONSUMER
+    private String pod; // Kubernetes pod name
+    private String container; // Container name
+    private String node; // Kubernetes node name
+    private Map<String, String> attributes; // additional metadata
 }

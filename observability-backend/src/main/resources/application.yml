@@ -5,7 +5,64 @@ spring:
   application:
     name: observability-backend
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:h2}
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
 logging:
   level:
     com.observability: INFO
     org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+
+# Observability data retention settings
+observability:
+  retention:
+    metrics-days: 7
+    logs-days: 7
+    traces-days: 7
+
+---
+# H2 Profile (Development)
+spring:
+  config:
+    activate:
+      on-profile: h2
+  datasource:
+    url: jdbc:h2:mem:observability;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+---
+# MySQL Profile (Production)
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:observability}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USERNAME:observability}
+    password: ${MYSQL_PASSWORD:observability}
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect

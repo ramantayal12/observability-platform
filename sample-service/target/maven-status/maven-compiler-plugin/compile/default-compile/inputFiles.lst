@@ -1,2 +1,6 @@
-/Users/rtayal/untitled folder/sample-service/src/main/java/com/sample/SampleApplication.java
-/Users/rtayal/untitled folder/sample-service/src/main/java/com/sample/controller/SampleController.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/controller/OrderController.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/SampleServiceApplication.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/model/Order.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/service/OrderService.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/service/PaymentService.java
+/Users/rtayal/untitled folder/sample-service/src/main/java/com/example/service/InventoryService.java
