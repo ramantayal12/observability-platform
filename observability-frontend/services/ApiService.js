@@ -184,7 +184,7 @@ class ApiService {
      * @returns {Promise} Overview data
      */
     async fetchOverview(filters = {}) {
-        console.log('[ApiService] fetchOverview called, useMockData:', this.useMockData);
+        console.log('[ApiService] fetchOverview called, useMockData:', this.useMockData, 'filters:', filters);
         stateManager.set('loading.metrics', true);
         stateManager.set('errors.metrics', null);
 
@@ -193,7 +193,16 @@ class ApiService {
             if (this.useMockData) {
                 console.log('[ApiService] Using mock data...');
                 await this.delay(300); // Simulate network delay
-                data = this.mockService.getOverview();
+
+                // Convert timeRange to startTime/endTime
+                const endTime = Date.now();
+                const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+
+                data = this.mockService.getOverview({
+                    startTime,
+                    endTime,
+                    ...filters
+                });
                 console.log('[ApiService] Mock data received:', data);
             } else {
                 console.log('[ApiService] Using real backend...');

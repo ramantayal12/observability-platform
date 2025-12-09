@@ -15,24 +15,53 @@
     // Page state
     let autoRefreshInterval = null;
     let services = [];
+    let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
+    let timeRangePicker = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Services page...');
-        
+
         // Setup UI
+        setupTimePicker();
         setupAutoRefresh();
-        
+
+        // Listen for time range changes
+        eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
         // Load initial data
         await loadServices();
-        
+
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Setup time picker
+     */
+    function setupTimePicker() {
+        timeRangePicker = new TimeRangePicker({
+            buttonId: 'timePickerBtn',
+            dropdownId: 'timePickerDropdown',
+            labelId: 'timePickerLabel'
+        });
+
+        // Set initial time range
+        currentTimeRange = timeRangePicker.getRange();
+    }
+
+    /**
+     * Handle time range change
+     */
+    function handleTimeRangeChange(data) {
+        console.log('[Services] Time range changed:', data);
+        currentTimeRange = data.range;
+        loadServices();
     }
 
     /**

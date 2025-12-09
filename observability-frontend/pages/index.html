@@ -108,28 +108,23 @@
             </div>
 
             <div class="topbar-right">
-                <!-- Time Range Picker -->
+                <!-- Time Picker -->
                 <div class="time-picker">
-                    <button class="time-picker-button" id="timePickerButton">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
-                            <path d="M8 4v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <button class="btn btn-secondary btn-sm" id="timePickerBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 11a5 5 0 110-10 5 5 0 010 10zm.5-8H7.5v4l3.5 2 .5-1-3-1.5V5z"/>
                         </svg>
-                        <span id="timeRangeLabel">Last 1 hour</span>
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="chevron">
-                            <path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
+                        <span id="timePickerLabel">Last 1 hour</span>
                     </button>
                     <div class="time-picker-dropdown" id="timePickerDropdown">
                         <!-- Populated by JS -->
                     </div>
                 </div>
 
-                <!-- Auto Refresh Toggle -->
-                <button class="icon-button" id="autoRefreshToggle" title="Auto Refresh">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                        <path d="M14 4a7 7 0 11-12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                        <path d="M14 1v3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <!-- Auto Refresh -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
                 </button>
 
@@ -291,6 +286,9 @@
     <script src="../services/ApiService.js"></script>
     <script src="../components/BaseComponent.js"></script>
     <script src="../components/NotificationManager.js"></script>
+    <script src="../components/TimeRangePicker.js"></script>
+    <script src="../components/Sidebar.js"></script>
+    <script src="../components/Topbar.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/overview.js"></script>

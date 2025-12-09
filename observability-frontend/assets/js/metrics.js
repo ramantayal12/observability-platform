@@ -20,21 +20,25 @@
         timeRange: 3600000 // 1 hour
     };
     let autoRefreshInterval = null;
+    let timeRangePicker = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Metrics page...');
-        
+
         // Setup UI
         setupTimePicker();
         setupAutoRefresh();
         setupFilters();
-        
+
+        // Listen for time range changes
+        eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
         // Load initial data
         await loadMetrics();
-        
+
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
@@ -46,30 +50,23 @@
      * Setup time picker
      */
     function setupTimePicker() {
-        const timePickerBtn = document.getElementById('timePickerBtn');
-        const timePickerDropdown = document.getElementById('timePickerDropdown');
-        const timeOptions = document.querySelectorAll('.time-option');
-
-        timePickerBtn.addEventListener('click', () => {
-            timePickerDropdown.classList.toggle('active');
+        timeRangePicker = new TimeRangePicker({
+            buttonId: 'timePickerBtn',
+            dropdownId: 'timePickerDropdown',
+            labelId: 'timePickerLabel'
         });
 
-        timeOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                const range = parseInt(option.dataset.range);
-                currentFilters.timeRange = range;
-                document.getElementById('timePickerLabel').textContent = option.textContent;
-                timePickerDropdown.classList.remove('active');
-                loadMetrics();
-            });
-        });
+        // Set initial time range
+        currentFilters.timeRange = timeRangePicker.getRange();
+    }
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!timePickerBtn.contains(e.target) && !timePickerDropdown.contains(e.target)) {
-                timePickerDropdown.classList.remove('active');
-            }
-        });
+    /**
+     * Handle time range change
+     */
+    function handleTimeRangeChange(data) {
+        console.log('[Metrics] Time range changed:', data);
+        currentFilters.timeRange = data.range;
+        loadMetrics();
     }
 
     /**
@@ -323,9 +320,10 @@
 
         // Group metrics by service
         const serviceData = {};
-        const metrics = data.metrics || {};
-        
-        Object.values(metrics).flat().forEach(metric => {
+        // Use allMetrics array if available, otherwise flatten metrics object
+        const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
+
+        allMetrics.forEach(metric => {
             const service = metric.serviceName || 'Unknown';
             if (!serviceData[service]) {
                 serviceData[service] = 0;
@@ -398,8 +396,8 @@
         const tbody = document.getElementById('metricsTableBody');
         if (!tbody) return;
 
-        const metrics = data.metrics || {};
-        const allMetrics = Object.values(metrics).flat();
+        // Use allMetrics array if available, otherwise flatten metrics object
+        const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
 
         if (allMetrics.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">No metrics found</td></tr>';
@@ -407,7 +405,7 @@
         }
 
         // Sort by timestamp (most recent first)
-        const sorted = allMetrics.sort((a, b) => b.timestamp - a.timestamp);
+        const sorted = [...allMetrics].sort((a, b) => b.timestamp - a.timestamp);
         const recent = sorted.slice(0, 100); // Show last 100
 
         tbody.innerHTML = recent.map(metric => `
@@ -428,10 +426,11 @@
         const serviceFilter = document.getElementById('serviceFilter');
         if (!serviceFilter) return;
 
-        const metrics = data.metrics || {};
+        // Use allMetrics array if available, otherwise flatten metrics object
+        const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
         const services = new Set();
 
-        Object.values(metrics).flat().forEach(metric => {
+        allMetrics.forEach(metric => {
             if (metric.serviceName) {
                 services.add(metric.serviceName);
             }
@@ -439,10 +438,10 @@
 
         const currentValue = serviceFilter.value;
         serviceFilter.innerHTML = '<option value="">All Services</option>' +
-            Array.from(services).sort().map(service => 
+            Array.from(services).sort().map(service =>
                 `<option value="${service}">${service}</option>`
             ).join('');
-        
+
         serviceFilter.value = currentValue;
     }
 

@@ -326,6 +326,117 @@
     color: var(--text-tertiary);
 }
 
+/* ==================== Widget Content ==================== */
+.widget-content {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.widget-content canvas {
+    max-height: 100%;
+}
+
+.loading-spinner {
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+.stat-display {
+    text-align: center;
+}
+
+.stat-display .stat-value {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: var(--space-xs);
+}
+
+.stat-display .stat-unit {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+}
+
+.stat-display .stat-label {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.widget-table {
+    width: 100%;
+    font-size: 13px;
+}
+
+.widget-table thead {
+    background: var(--bg-tertiary);
+}
+
+.widget-table th {
+    padding: var(--space-sm);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.widget-table td {
+    padding: var(--space-sm);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.widget-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.widget-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+}
+
+.widget-card .widget-header {
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-tertiary);
+}
+
+.widget-card .widget-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.widget-card .widget-body {
+    flex: 1;
+    padding: var(--space-lg);
+    position: relative;
+    min-height: 200px;
+}
+
+.widget-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
 /* ==================== Empty State ==================== */
 .dashboards-empty {
     text-align: center;

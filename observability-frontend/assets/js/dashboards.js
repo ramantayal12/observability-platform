@@ -258,7 +258,7 @@
     /**
      * Render dashboard
      */
-    function renderDashboard() {
+    async function renderDashboard() {
         const canvas = document.getElementById('dashboardCanvas');
         if (!canvas) return;
 
@@ -267,19 +267,167 @@
             return;
         }
 
+        // Create widget containers
         canvas.innerHTML = currentDashboard.widgets.map(widget => `
-            <div class="widget-card">
+            <div class="widget-card" id="widget-${widget.id}">
                 <div class="widget-header">
                     <h3>${widget.title}</h3>
                     <button class="btn btn-ghost btn-sm" onclick="window.removeWidget('${widget.id}')">×</button>
                 </div>
                 <div class="widget-body">
-                    <div class="widget-placeholder">
-                        ${widget.type} - ${widget.metric} (${widget.aggregation})
+                    <div class="widget-content" id="widget-content-${widget.id}">
+                        <div class="loading-spinner">Loading...</div>
                     </div>
                 </div>
             </div>
         `).join('');
+
+        // Load data for each widget
+        await loadWidgetData();
+    }
+
+    /**
+     * Load data for all widgets
+     */
+    async function loadWidgetData() {
+        if (!currentDashboard) return;
+
+        try {
+            // Fetch metrics data
+            const data = await apiService.fetchMetrics({
+                startTime: Date.now() - 3600000, // Last hour
+                endTime: Date.now()
+            });
+
+            // Render each widget with data
+            currentDashboard.widgets.forEach(widget => {
+                renderWidget(widget, data);
+            });
+
+        } catch (error) {
+            console.error('Error loading widget data:', error);
+            notificationManager.error('Failed to load widget data');
+        }
+    }
+
+    /**
+     * Render individual widget with data
+     */
+    function renderWidget(widget, data) {
+        const container = document.getElementById(`widget-content-${widget.id}`);
+        if (!container) return;
+
+        const metricData = data.metrics?.[widget.metric] || [];
+        const stats = data.statistics?.[widget.metric];
+
+        if (widget.type === 'timeseries') {
+            renderTimeseriesWidget(container, widget, metricData);
+        } else if (widget.type === 'stat') {
+            renderStatWidget(container, widget, stats);
+        } else if (widget.type === 'table') {
+            renderTableWidget(container, widget, metricData);
+        } else {
+            container.innerHTML = `<div class="widget-placeholder">${widget.type} - ${widget.metric}</div>`;
+        }
+    }
+
+    /**
+     * Render timeseries widget
+     */
+    function renderTimeseriesWidget(container, widget, data) {
+        container.innerHTML = '<canvas id="chart-' + widget.id + '"></canvas>';
+
+        const canvas = document.getElementById('chart-' + widget.id);
+        if (!canvas) return;
+
+        const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+        const values = data.map(d => d.value);
+
+        new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: widget.metric,
+                    data: values,
+                    borderColor: '#774FF8',
+                    backgroundColor: 'rgba(119, 79, 248, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    /**
+     * Render stat widget
+     */
+    function renderStatWidget(container, widget, stats) {
+        if (!stats) {
+            container.innerHTML = '<div class="stat-value">--</div>';
+            return;
+        }
+
+        let value = 0;
+        const metricConfig = AppConfig.METRICS[widget.metric] || {};
+        const unit = metricConfig.unit || '';
+
+        switch (widget.aggregation) {
+            case 'avg': value = stats.avg || 0; break;
+            case 'min': value = stats.min || 0; break;
+            case 'max': value = stats.max || 0; break;
+            case 'sum': value = stats.data?.reduce((a, b) => a + b.value, 0) || 0; break;
+            default: value = stats.avg || 0;
+        }
+
+        container.innerHTML = `
+            <div class="stat-display">
+                <div class="stat-value">${value.toFixed(2)}</div>
+                <div class="stat-unit">${unit}</div>
+                <div class="stat-label">${widget.aggregation.toUpperCase()}</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render table widget
+     */
+    function renderTableWidget(container, widget, data) {
+        if (!data || data.length === 0) {
+            container.innerHTML = '<div class="empty-state">No data available</div>';
+            return;
+        }
+
+        const recent = data.slice(-10).reverse(); // Last 10 entries
+
+        container.innerHTML = `
+            <table class="widget-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${recent.map(d => `
+                        <tr>
+                            <td>${new Date(d.timestamp).toLocaleTimeString()}</td>
+                            <td>${d.value.toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
     }
 
     /**

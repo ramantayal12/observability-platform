@@ -21,22 +21,26 @@
     };
     let autoRefreshInterval = null;
     let allLogs = [];
+    let timeRangePicker = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Logs page...');
-        
+
         // Setup UI
         setupTimePicker();
         setupAutoRefresh();
         setupFilters();
         setupSearch();
-        
+
+        // Listen for time range changes
+        eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
         // Load initial data
         await loadLogs();
-        
+
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
@@ -48,30 +52,23 @@
      * Setup time picker
      */
     function setupTimePicker() {
-        const timePickerBtn = document.getElementById('timePickerBtn');
-        const timePickerDropdown = document.getElementById('timePickerDropdown');
-        const timeOptions = document.querySelectorAll('.time-option');
-
-        timePickerBtn.addEventListener('click', () => {
-            timePickerDropdown.classList.toggle('active');
+        timeRangePicker = new TimeRangePicker({
+            buttonId: 'timePickerBtn',
+            dropdownId: 'timePickerDropdown',
+            labelId: 'timePickerLabel'
         });
 
-        timeOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                const range = parseInt(option.dataset.range);
-                currentFilters.timeRange = range;
-                document.getElementById('timePickerLabel').textContent = option.textContent;
-                timePickerDropdown.classList.remove('active');
-                loadLogs();
-            });
-        });
+        // Set initial time range
+        currentFilters.timeRange = timeRangePicker.getRange();
+    }
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!timePickerBtn.contains(e.target) && !timePickerDropdown.contains(e.target)) {
-                timePickerDropdown.classList.remove('active');
-            }
-        });
+    /**
+     * Handle time range change
+     */
+    function handleTimeRangeChange(data) {
+        console.log('[Logs] Time range changed:', data);
+        currentFilters.timeRange = data.range;
+        loadLogs();
     }
 
     /**

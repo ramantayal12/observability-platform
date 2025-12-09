@@ -16,21 +16,25 @@
     let autoRefreshInterval = null;
     let charts = {};
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
+    let timeRangePicker = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Overview page...');
-        
+
         // Setup UI
         setupTimePicker();
         setupAutoRefresh();
         setupCharts();
-        
+
+        // Listen for time range changes
+        eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
         // Load initial data
         await loadOverview();
-        
+
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
@@ -42,11 +46,11 @@
      * Setup auto-refresh
      */
     function setupAutoRefresh() {
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn') || document.getElementById('autoRefreshToggle');
+        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
         if (!autoRefreshBtn) return;
-        
+
         const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-        
+
         if (isEnabled) {
             autoRefreshBtn.classList.add('active');
         }
@@ -54,7 +58,7 @@
         autoRefreshBtn.addEventListener('click', () => {
             const enabled = autoRefreshBtn.classList.toggle('active');
             localStorage.setItem('observability_auto_refresh', enabled);
-            
+
             if (enabled) {
                 startAutoRefresh();
                 notificationManager.success('Auto-refresh enabled');
@@ -69,72 +73,23 @@
      * Setup time picker for the overview page
      */
     function setupTimePicker() {
-        const timePickerBtn = document.getElementById('timePickerButton');
-        const timePickerDropdown = document.getElementById('timePickerDropdown');
-        const timeRangeLabel = document.getElementById('timeRangeLabel');
-        if (!timePickerBtn || !timePickerDropdown || !timeRangeLabel) return;
-
-        const savedRange = parseInt(localStorage.getItem(AppConfig.STORAGE.TIME_RANGE), 10);
-        if (!isNaN(savedRange)) {
-            currentTimeRange = savedRange;
-        }
-
-        renderTimeOptions(timePickerDropdown, currentTimeRange);
-        updateTimeRangeLabel(timeRangeLabel, currentTimeRange);
-
-        timePickerBtn.addEventListener('click', () => {
-            timePickerDropdown.classList.toggle('active');
+        timeRangePicker = new TimeRangePicker({
+            buttonId: 'timePickerBtn',
+            dropdownId: 'timePickerDropdown',
+            labelId: 'timePickerLabel'
         });
 
-        timePickerDropdown.addEventListener('click', (event) => {
-            const option = event.target.closest('.time-option');
-            if (!option) return;
-
-            const range = parseInt(option.dataset.range, 10);
-            const label = option.dataset.label;
-
-            if (range === currentTimeRange) {
-                timePickerDropdown.classList.remove('active');
-                return;
-            }
-
-            currentTimeRange = range;
-            stateManager.set('filters.timeRange', range);
-            localStorage.setItem(AppConfig.STORAGE.TIME_RANGE, range);
-
-            updateTimeRangeLabel(timeRangeLabel, currentTimeRange, label);
-            renderTimeOptions(timePickerDropdown, currentTimeRange);
-            timePickerDropdown.classList.remove('active');
-            loadOverview();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!timePickerBtn.contains(e.target) && !timePickerDropdown.contains(e.target)) {
-                timePickerDropdown.classList.remove('active');
-            }
-        });
+        // Set initial time range
+        currentTimeRange = timeRangePicker.getRange();
     }
 
-    function renderTimeOptions(dropdown, selectedRange) {
-        dropdown.innerHTML = AppConfig.TIME_RANGES.map(range => `
-            <div class="time-option ${range.value === selectedRange ? 'active' : ''}" 
-                 data-range="${range.value}" 
-                 data-label="${range.label}">
-                ${range.label}
-            </div>
-        `).join('');
-    }
-
-    function updateTimeRangeLabel(labelEl, range, labelText) {
-        const label = labelText || getTimeRangeLabel(range);
-        if (labelEl && label) {
-            labelEl.textContent = label;
-        }
-    }
-
-    function getTimeRangeLabel(range) {
-        const match = AppConfig.TIME_RANGES.find(r => r.value === range);
-        return match ? match.label : 'Last 1 hour';
+    /**
+     * Handle time range change
+     */
+    function handleTimeRangeChange(data) {
+        console.log('[Overview] Time range changed:', data);
+        currentTimeRange = data.range;
+        loadOverview();
     }
 
     /**

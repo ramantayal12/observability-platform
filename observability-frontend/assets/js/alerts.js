@@ -14,19 +14,74 @@
     // Page state
     let alertRules = [];
     let activeAlerts = [];
+    let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
+    let timeRangePicker = null;
 
     /**
      * Initialize the page
      */
     async function init() {
         console.log('Initializing Alerts page...');
-        
+
         // Setup UI
+        setupTimePicker();
+        setupAutoRefresh();
         setupModal();
         setupNewAlertButton();
-        
+
+        // Listen for time range changes
+        eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
         // Load initial data
         loadAlerts();
+    }
+
+    /**
+     * Setup time picker
+     */
+    function setupTimePicker() {
+        timeRangePicker = new TimeRangePicker({
+            buttonId: 'timePickerBtn',
+            dropdownId: 'timePickerDropdown',
+            labelId: 'timePickerLabel'
+        });
+
+        // Set initial time range
+        currentTimeRange = timeRangePicker.getRange();
+    }
+
+    /**
+     * Handle time range change
+     */
+    function handleTimeRangeChange(data) {
+        console.log('[Alerts] Time range changed:', data);
+        currentTimeRange = data.range;
+        loadAlerts();
+    }
+
+    /**
+     * Setup auto-refresh
+     */
+    function setupAutoRefresh() {
+        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+        if (!autoRefreshBtn) return;
+
+        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
+
+        if (isEnabled) {
+            autoRefreshBtn.classList.add('active');
+        }
+
+        autoRefreshBtn.addEventListener('click', () => {
+            const enabled = autoRefreshBtn.classList.toggle('active');
+            localStorage.setItem('observability_auto_refresh', enabled);
+
+            if (enabled) {
+                notificationManager.show('Auto-refresh enabled', 'success');
+            } else {
+                notificationManager.show('Auto-refresh disabled', 'info');
+            }
+        });
     }
 
     /**
