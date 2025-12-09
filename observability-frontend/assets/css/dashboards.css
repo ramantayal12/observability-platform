@@ -1,20 +1,43 @@
 /**
  * Dashboards Page Styles
- * Simplified dashboard builder with proper spacing
+ * Custom dashboard builder with proper spacing
  */
+
+/* ==================== Page Header ==================== */
+.dashboard-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.dashboard-header-left .page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-xs) 0;
+}
+
+.dashboard-header-left .page-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
 
 /* ==================== Dashboards Grid ==================== */
 .dashboards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--space-lg);
 }
 
 .dashboard-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-radius: var(--border-radius);
-    padding: var(--space-lg);
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-xl);
     cursor: pointer;
     transition: all var(--transition-fast);
     position: relative;
@@ -22,7 +45,7 @@
 
 .dashboard-card:hover {
     border-color: var(--primary);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
 }
 
@@ -33,59 +56,66 @@
     margin-bottom: var(--space-md);
 }
 
-.dashboard-card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--border-radius-sm);
-    background: rgba(119, 79, 248, 0.1);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.dashboard-card-actions {
-    display: flex;
-    gap: var(--space-xxs);
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.dashboard-card:hover .dashboard-card-actions {
-    opacity: 1;
-}
-
 .dashboard-card-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--space-xs);
-}
-
-.dashboard-card-description {
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-    margin-bottom: var(--space-md);
-}
-
-.dashboard-card-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--border-primary);
+    margin: 0;
 }
 
 .dashboard-card-widgets {
     font-size: 12px;
-    color: var(--text-tertiary);
+    color: var(--primary);
+    background: rgba(119, 79, 248, 0.1);
+    padding: var(--space-xxs) var(--space-sm);
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+}
+
+.dashboard-card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0 0 var(--space-lg) 0;
+    min-height: 42px;
+}
+
+.dashboard-card-footer {
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-primary);
 }
 
 .dashboard-card-date {
     font-size: 12px;
     color: var(--text-tertiary);
+}
+
+/* Empty Dashboards State */
+.empty-dashboards-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--space-xxxl) var(--space-xl);
+    background: var(--bg-secondary);
+    border: 2px dashed var(--border-primary);
+    border-radius: var(--border-radius-lg);
+}
+
+.empty-dashboards-state svg {
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-lg);
+}
+
+.empty-dashboards-state h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.empty-dashboards-state p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-xl) 0;
 }
 
 /* ==================== Dashboard Toolbar ==================== */

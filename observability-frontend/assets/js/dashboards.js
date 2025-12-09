@@ -1,6 +1,6 @@
 /**
  * Dashboards Page
- * Custom dashboard builder
+ * Custom dashboard builder - Create and manage your own monitoring dashboards
  */
 
 (function() {
@@ -22,7 +22,7 @@
     // Page state
     let dashboards = [];
     let currentDashboard = null;
-    let apiDetailsTable = null;
+    let currentView = 'list'; // 'list' or 'dashboard'
 
     /**
      * Initialize the page
@@ -35,22 +35,54 @@
 
         // Setup UI
         setupNewDashboardButton();
-        setupNewWidgetButton();
+        setupBackButton();
+        setupDashboardActions();
         setupModals();
-        setupApiDetailsTable();
+        setupRefreshButtons();
 
         // Render dashboards list
         renderDashboardsList();
+        showListView();
+    }
 
-        // Load first dashboard if exists
-        if (dashboards.length > 0) {
-            loadDashboard(dashboards[0].id);
-        } else {
-            showEmptyState();
+    /**
+     * Setup refresh buttons
+     */
+    function setupRefreshButtons() {
+        // Manual refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.classList.add('spinning');
+                await loadApiDetails();
+                if (currentDashboard) {
+                    loadDashboard(currentDashboard.id);
+                }
+                refreshBtn.classList.remove('spinning');
+                notificationManager.success('Data refreshed');
+            });
         }
 
-        // Load API details
-        await loadApiDetails();
+        // Auto-refresh toggle button
+        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+        if (!autoRefreshBtn) return;
+
+        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
+
+        if (isEnabled) {
+            autoRefreshBtn.classList.add('active');
+        }
+
+        autoRefreshBtn.addEventListener('click', () => {
+            const enabled = autoRefreshBtn.classList.toggle('active');
+            localStorage.setItem('observability_auto_refresh', enabled);
+
+            if (enabled) {
+                notificationManager.success('Auto-refresh enabled (30s)');
+            } else {
+                notificationManager.info('Auto-refresh disabled');
+            }
+        });
     }
 
     /**
@@ -79,76 +111,131 @@
      * Setup new dashboard button
      */
     function setupNewDashboardButton() {
-        const btn = document.getElementById('newDashboardBtn');
-        if (btn) {
-            btn.addEventListener('click', () => {
+        // Header button
+        const headerBtn = document.getElementById('createDashboardHeaderBtn');
+        if (headerBtn) {
+            headerBtn.addEventListener('click', () => {
                 openNewDashboardModal();
             });
         }
     }
 
     /**
-     * Setup new widget button
+     * Setup back button
      */
-    function setupNewWidgetButton() {
-        const btn = document.getElementById('newWidgetBtn');
-        if (btn) {
-            btn.addEventListener('click', () => {
+    function setupBackButton() {
+        const backBtn = document.getElementById('backToDashboards');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                showListView();
+            });
+        }
+    }
+
+    /**
+     * Setup dashboard action buttons
+     */
+    function setupDashboardActions() {
+        // Add widget button
+        const addWidgetBtn = document.getElementById('addWidgetBtn');
+        if (addWidgetBtn) {
+            addWidgetBtn.addEventListener('click', () => {
                 if (currentDashboard) {
-                    openNewWidgetModal();
-                } else {
-                    notificationManager.warning('Please create a dashboard first');
+                    openAddWidgetModal();
+                }
+            });
+        }
+
+        // Edit dashboard button
+        const editBtn = document.getElementById('editDashboardBtn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                if (currentDashboard) {
+                    openEditDashboardModal();
+                }
+            });
+        }
+
+        // Delete dashboard button
+        const deleteBtn = document.getElementById('deleteDashboardBtn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                if (currentDashboard) {
+                    deleteDashboard(currentDashboard.id);
                 }
             });
         }
     }
 
     /**
+     * Show list view
+     */
+    function showListView() {
+        currentView = 'list';
+        currentDashboard = null;
+        document.getElementById('dashboardListView').classList.remove('hidden');
+        document.getElementById('dashboardView').classList.add('hidden');
+        document.querySelector('.dashboard-page-header').classList.remove('hidden');
+    }
+
+    /**
+     * Show dashboard view
+     */
+    function showDashboardView() {
+        currentView = 'dashboard';
+        document.getElementById('dashboardListView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.remove('hidden');
+        document.querySelector('.dashboard-page-header').classList.add('hidden');
+    }
+
+    /**
      * Setup modals
      */
     function setupModals() {
-        // New Dashboard Modal
+        // New Dashboard Modal - close buttons
         const newDashboardModal = document.getElementById('newDashboardModal');
-        const closeNewDashboard = document.getElementById('closeNewDashboard');
-        const cancelNewDashboard = document.getElementById('cancelNewDashboard');
+        if (newDashboardModal) {
+            newDashboardModal.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    newDashboardModal.classList.remove('active');
+                });
+            });
+            newDashboardModal.querySelector('.modal-overlay')?.addEventListener('click', () => {
+                newDashboardModal.classList.remove('active');
+            });
+        }
+
         const createDashboardBtn = document.getElementById('createDashboardBtn');
-
-        if (closeNewDashboard) {
-            closeNewDashboard.addEventListener('click', () => {
-                newDashboardModal.classList.remove('active');
-            });
-        }
-
-        if (cancelNewDashboard) {
-            cancelNewDashboard.addEventListener('click', () => {
-                newDashboardModal.classList.remove('active');
-            });
-        }
-
         if (createDashboardBtn) {
             createDashboardBtn.addEventListener('click', createDashboard);
         }
 
-        // New Widget Modal
-        const newWidgetModal = document.getElementById('newWidgetModal');
-        const closeNewWidget = document.getElementById('closeNewWidget');
-        const cancelNewWidget = document.getElementById('cancelNewWidget');
-        const addWidgetBtn = document.getElementById('addWidgetBtn');
+        // Add Widget Modal - close buttons
+        const addWidgetModal = document.getElementById('addWidgetModal');
+        if (addWidgetModal) {
+            addWidgetModal.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    addWidgetModal.classList.remove('active');
+                });
+            });
+            addWidgetModal.querySelector('.modal-overlay')?.addEventListener('click', () => {
+                addWidgetModal.classList.remove('active');
+            });
 
-        if (closeNewWidget) {
-            closeNewWidget.addEventListener('click', () => {
-                newWidgetModal.classList.remove('active');
+            // Widget type selection
+            addWidgetModal.querySelectorAll('.widget-type-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    addWidgetModal.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    document.getElementById('widgetConfigForm').classList.remove('hidden');
+                    document.getElementById('saveWidgetBtn').disabled = false;
+                });
             });
         }
 
-        if (cancelNewWidget) {
-            cancelNewWidget.addEventListener('click', () => {
-                newWidgetModal.classList.remove('active');
-            });
-        }
-
-        if (addWidgetBtn) {
-            addWidgetBtn.addEventListener('click', addWidget);
+        const saveWidgetBtn = document.getElementById('saveWidgetBtn');
+        if (saveWidgetBtn) {
+            saveWidgetBtn.addEventListener('click', addWidget);
         }
     }
 
@@ -157,8 +244,36 @@
      */
     function openNewDashboardModal() {
         const modal = document.getElementById('newDashboardModal');
-        document.getElementById('dashboardName').value = '';
-        document.getElementById('dashboardDescription').value = '';
+        const nameInput = document.getElementById('dashboardNameInput');
+        const descInput = document.getElementById('dashboardDescInput');
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        modal.classList.add('active');
+    }
+
+    /**
+     * Open edit dashboard modal
+     */
+    function openEditDashboardModal() {
+        if (!currentDashboard) return;
+        const modal = document.getElementById('newDashboardModal');
+        const nameInput = document.getElementById('dashboardNameInput');
+        const descInput = document.getElementById('dashboardDescInput');
+        if (nameInput) nameInput.value = currentDashboard.name;
+        if (descInput) descInput.value = currentDashboard.description || '';
+        modal.classList.add('active');
+    }
+
+    /**
+     * Open add widget modal
+     */
+    function openAddWidgetModal() {
+        const modal = document.getElementById('addWidgetModal');
+        const titleInput = document.getElementById('widgetTitleInput');
+        if (titleInput) titleInput.value = '';
+        document.getElementById('widgetConfigForm')?.classList.add('hidden');
+        document.getElementById('saveWidgetBtn').disabled = true;
+        modal.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
         modal.classList.add('active');
     }
 
@@ -166,11 +281,23 @@
      * Create dashboard
      */
     function createDashboard() {
-        const name = document.getElementById('dashboardName').value.trim();
-        const description = document.getElementById('dashboardDescription').value.trim();
+        const nameInput = document.getElementById('dashboardNameInput');
+        const descInput = document.getElementById('dashboardDescInput');
+        const name = nameInput?.value.trim();
+        const description = descInput?.value.trim();
 
         if (!name) {
             notificationManager.error('Please enter a dashboard name');
+            return;
+        }
+
+        // Check if editing existing dashboard
+        if (currentDashboard && currentView === 'dashboard') {
+            currentDashboard.name = name;
+            currentDashboard.description = description;
+            saveDashboards();
+            document.getElementById('newDashboardModal').classList.remove('active');
+            notificationManager.success('Dashboard updated successfully');
             return;
         }
 
@@ -185,21 +312,23 @@
         dashboards.push(dashboard);
         saveDashboards();
         renderDashboardsList();
-        loadDashboard(dashboard.id);
+        openDashboard(dashboard.id);
 
         document.getElementById('newDashboardModal').classList.remove('active');
         notificationManager.success('Dashboard created successfully');
     }
 
     /**
-     * Open new widget modal
+     * Delete dashboard
      */
-    function openNewWidgetModal() {
-        const modal = document.getElementById('newWidgetModal');
-        document.getElementById('widgetTitle').value = '';
-        document.getElementById('widgetMetric').value = 'api.latency';
-        document.getElementById('widgetAggregation').value = 'avg';
-        modal.classList.add('active');
+    function deleteDashboard(dashboardId) {
+        if (!confirm('Are you sure you want to delete this dashboard?')) return;
+
+        dashboards = dashboards.filter(d => d.id !== dashboardId);
+        saveDashboards();
+        showListView();
+        renderDashboardsList();
+        notificationManager.success('Dashboard deleted');
     }
 
     /**
@@ -208,10 +337,15 @@
     function addWidget() {
         if (!currentDashboard) return;
 
-        const title = document.getElementById('widgetTitle').value.trim();
-        const metric = document.getElementById('widgetMetric').value;
-        const aggregation = document.getElementById('widgetAggregation').value;
-        const type = document.querySelector('input[name="widgetType"]:checked')?.value || 'timeseries';
+        const titleInput = document.getElementById('widgetTitleInput');
+        const metricSelect = document.getElementById('widgetMetricSelect');
+        const aggSelect = document.getElementById('widgetAggSelect');
+        const selectedType = document.querySelector('.widget-type-card.selected');
+
+        const title = titleInput?.value.trim();
+        const metric = metricSelect?.value || 'api.latency';
+        const aggregation = aggSelect?.value || 'avg';
+        const type = selectedType?.dataset.type || 'timeseries';
 
         if (!title) {
             notificationManager.error('Please enter a widget title');
@@ -231,41 +365,65 @@
         saveDashboards();
         renderDashboard();
 
-        document.getElementById('newWidgetModal').classList.remove('active');
+        document.getElementById('addWidgetModal').classList.remove('active');
         notificationManager.success('Widget added successfully');
     }
 
     /**
-     * Render dashboards list
+     * Render dashboards list as cards
      */
     function renderDashboardsList() {
-        const list = document.getElementById('dashboardsList');
-        if (!list) return;
+        const grid = document.getElementById('dashboardsGrid');
+        if (!grid) return;
 
         if (dashboards.length === 0) {
-            list.innerHTML = '<div class="empty-state"><p>No dashboards yet</p></div>';
+            grid.innerHTML = `
+                <div class="empty-dashboards-state">
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" opacity="0.3">
+                        <rect x="10" y="10" width="25" height="25" rx="3" stroke="currentColor" stroke-width="2"/>
+                        <rect x="45" y="10" width="25" height="15" rx="3" stroke="currentColor" stroke-width="2"/>
+                        <rect x="10" y="45" width="25" height="25" rx="3" stroke="currentColor" stroke-width="2"/>
+                        <rect x="45" y="35" width="25" height="35" rx="3" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <h3>No Dashboards Yet</h3>
+                    <p>Create your first custom dashboard to start monitoring your metrics</p>
+                    <button class="btn btn-primary" onclick="document.getElementById('createDashboardHeaderBtn').click()">
+                        Create Dashboard
+                    </button>
+                </div>
+            `;
             return;
         }
 
-        list.innerHTML = dashboards.map(dashboard => `
-            <div class="dashboard-item ${currentDashboard?.id === dashboard.id ? 'active' : ''}" 
-                 onclick="window.loadDashboard('${dashboard.id}')">
-                <div class="dashboard-name">${dashboard.name}</div>
-                <div class="dashboard-meta">${dashboard.widgets.length} widgets</div>
+        grid.innerHTML = dashboards.map(dashboard => `
+            <div class="dashboard-card" onclick="window.openDashboard('${dashboard.id}')">
+                <div class="dashboard-card-header">
+                    <h3 class="dashboard-card-title">${escapeHtml(dashboard.name)}</h3>
+                    <span class="dashboard-card-widgets">${dashboard.widgets.length} widgets</span>
+                </div>
+                <p class="dashboard-card-desc">${escapeHtml(dashboard.description || 'No description')}</p>
+                <div class="dashboard-card-footer">
+                    <span class="dashboard-card-date">Created ${formatDate(dashboard.createdAt)}</span>
+                </div>
             </div>
         `).join('');
     }
 
     /**
-     * Load dashboard
+     * Open dashboard (view mode)
      */
-    window.loadDashboard = function(dashboardId) {
+    window.openDashboard = function(dashboardId) {
         currentDashboard = dashboards.find(d => d.id === dashboardId);
         if (currentDashboard) {
-            renderDashboardsList();
+            showDashboardView();
             renderDashboard();
         }
     };
+
+    /**
+     * Load dashboard (legacy support)
+     */
+    window.loadDashboard = window.openDashboard;
 
     /**
      * Render dashboard
@@ -477,82 +635,27 @@
     }
 
     /**
-     * Setup API Details Table
+     * Escape HTML
      */
-    function setupApiDetailsTable() {
-        console.log('[Dashboards] Setting up API Details Table...');
-        console.log('[Dashboards] ApiDetailsTable available:', typeof ApiDetailsTable !== 'undefined');
-
-        if (typeof ApiDetailsTable !== 'undefined') {
-            try {
-                apiDetailsTable = new ApiDetailsTable({
-                    containerId: 'apiDetailsTable',
-                    title: 'API Endpoint Metrics',
-                    showFilters: true,
-                    maxRows: 50
-                });
-                console.log('[Dashboards] API Details Table initialized successfully');
-            } catch (error) {
-                console.error('[Dashboards] Error initializing API Details Table:', error);
-            }
-        } else {
-            console.warn('[Dashboards] ApiDetailsTable component not found');
-        }
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
     }
 
     /**
-     * Load API endpoint details
+     * Format date
      */
-    async function loadApiDetails() {
-        if (!apiDetailsTable) return;
+    function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
 
-        try {
-            // Generate mock API endpoint data
-            const apiData = generateMockApiData();
-            apiDetailsTable.setData(apiData);
-        } catch (error) {
-            console.error('Error loading API details:', error);
-        }
-    }
-
-    /**
-     * Generate mock API endpoint time series data
-     */
-    function generateMockApiData() {
-        const endpoints = [
-            'GET /api/v1/metrics',
-            'POST /api/v1/metrics',
-            'GET /api/v1/logs',
-            'POST /api/v1/logs',
-            'GET /api/v1/traces',
-            'GET /api/v1/services',
-            'GET /api/v1/dashboards',
-            'GET /api/v1/alerts'
-        ];
-
-        const now = Date.now();
-        const timeSeriesData = {};
-
-        endpoints.forEach(endpoint => {
-            const dataPoints = [];
-            const baseLatency = Math.random() * 80 + 20; // 20-100ms base
-
-            // Generate 60 data points (last hour, one per minute)
-            for (let i = 60; i >= 0; i--) {
-                const timestamp = now - (i * 60 * 1000); // Go back i minutes
-                const variation = (Math.random() - 0.5) * 40; // ±20ms variation
-                const latency = Math.max(5, baseLatency + variation);
-
-                dataPoints.push({
-                    x: timestamp,
-                    y: latency
-                });
-            }
-
-            timeSeriesData[endpoint] = dataPoints;
-        });
-
-        return timeSeriesData;
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+        if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+        return date.toLocaleDateString();
     }
 
     // Initialize when DOM is ready

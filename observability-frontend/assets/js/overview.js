@@ -50,9 +50,21 @@
     }
 
     /**
-     * Setup auto-refresh
+     * Setup auto-refresh and manual refresh
      */
     function setupAutoRefresh() {
+        // Manual refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.classList.add('spinning');
+                await loadOverview();
+                refreshBtn.classList.remove('spinning');
+                notificationManager.success('Data refreshed');
+            });
+        }
+
+        // Auto-refresh toggle button
         const autoRefreshBtn = document.getElementById('autoRefreshBtn');
         if (!autoRefreshBtn) return;
 
@@ -68,7 +80,7 @@
 
             if (enabled) {
                 startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled');
+                notificationManager.success('Auto-refresh enabled (30s)');
             } else {
                 stopAutoRefresh();
                 notificationManager.info('Auto-refresh disabled');
@@ -205,30 +217,30 @@
     }
 
     /**
-     * Update charts with new data using InteractiveChart
+     * Update charts with new data using InteractiveChart (API endpoint level)
      */
     function updateCharts(data) {
         console.log('[Overview] Updating charts with data:', data);
 
-        // Update latency chart - group by endpoint/service
+        // Update latency chart - group by API endpoint
         if (charts.latency && data.latencyData) {
             const seriesData = groupDataBySeries(data.latencyData, 'endpoint');
             charts.latency.setData(seriesData);
         }
 
-        // Update throughput chart - group by service
+        // Update throughput chart - group by API endpoint
         if (charts.throughput && data.throughputData) {
-            const seriesData = groupDataBySeries(data.throughputData, 'serviceName');
+            const seriesData = groupDataBySeries(data.throughputData, 'endpoint');
             charts.throughput.setData(seriesData);
         }
 
-        // Update error rate chart - group by service
+        // Update error rate chart - group by API endpoint
         if (charts.errorRate && data.errorRateData) {
-            const seriesData = groupDataBySeries(data.errorRateData, 'serviceName');
+            const seriesData = groupDataBySeries(data.errorRateData, 'endpoint');
             charts.errorRate.setData(seriesData);
         }
 
-        // Update service latency chart - bar chart
+        // Update service latency chart - bar chart by API endpoint
         if (charts.serviceLatency && data.serviceLatency) {
             const seriesData = {};
             data.serviceLatency.forEach(d => {

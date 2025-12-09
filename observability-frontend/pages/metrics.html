@@ -125,8 +125,15 @@
                     </div>
                 </div>
 
-                <!-- Auto Refresh -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                <!-- Manual Refresh -->
+                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                    </svg>
+                </button>
+
+                <!-- Auto Refresh Toggle -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
@@ -197,64 +204,125 @@
                 </div>
             </div>
 
-            <!-- Charts Grid -->
+            <!-- Charts Grid - Row 1: Latency -->
             <div class="charts-grid">
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3 class="chart-title">API Latency Over Time</h3>
+                        <h3 class="chart-title">API Endpoint Latency (ms)</h3>
                     </div>
                     <div class="chart-body" id="latencyChartContainer"></div>
                 </div>
 
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3 class="chart-title">Throughput Over Time</h3>
+                        <h3 class="chart-title">P50 Latency (ms)</h3>
+                    </div>
+                    <div class="chart-body" id="p50ChartContainer"></div>
+                </div>
+            </div>
+
+            <!-- Charts Grid - Row 2: P90 & P99 Latency -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">P90 Latency (ms)</h3>
+                    </div>
+                    <div class="chart-body" id="p90ChartContainer"></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">P99 Latency by Operation Type (ms)</h3>
+                    </div>
+                    <div class="chart-body" id="p99ChartContainer"></div>
+                </div>
+            </div>
+
+            <!-- Charts Grid - Row 2: Throughput & Errors -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">API Endpoint Throughput (req/min)</h3>
                     </div>
                     <div class="chart-body" id="throughputChartContainer"></div>
                 </div>
 
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3 class="chart-title">Error Rate Over Time</h3>
+                        <h3 class="chart-title">API Endpoint Error Rate (%)</h3>
                     </div>
                     <div class="chart-body" id="errorRateChartContainer"></div>
+                </div>
+            </div>
+
+            <!-- Charts Grid - Row 3: System Resources -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">CPU Usage (%)</h3>
+                    </div>
+                    <div class="chart-body" id="cpuChartContainer"></div>
                 </div>
 
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3 class="chart-title">Metrics by Service</h3>
+                        <h3 class="chart-title">Memory Usage (MB)</h3>
+                    </div>
+                    <div class="chart-body" id="memoryChartContainer"></div>
+                </div>
+            </div>
+
+            <!-- Charts Grid - Row 4: Request Distribution -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Requests by API Endpoint</h3>
                     </div>
                     <div class="chart-body" id="serviceMetricsChartContainer"></div>
                 </div>
-            </div>
 
-            <!-- Metrics Table -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Recent Metrics</h3>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Service</th>
-                                <th>Metric</th>
-                                <th>Value</th>
-                                <th>Endpoint</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metricsTableBody">
-                            <tr>
-                                <td colspan="5" class="text-center">Loading metrics...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Response Status Codes</h3>
+                    </div>
+                    <div class="chart-body" id="statusCodesChartContainer"></div>
                 </div>
             </div>
 
-            <!-- API Endpoint Details -->
-            <div id="apiDetailsTable"></div>
+            <!-- Charts Grid - Row 5: Pod Level Metrics -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Pod CPU Usage (%)</h3>
+                    </div>
+                    <div class="chart-body" id="podCpuChartContainer"></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Pod Memory Usage (MB)</h3>
+                    </div>
+                    <div class="chart-body" id="podMemoryChartContainer"></div>
+                </div>
+            </div>
+
+            <!-- Charts Grid - Row 6: Container Level Metrics -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Container CPU Usage (%)</h3>
+                    </div>
+                    <div class="chart-body" id="containerCpuChartContainer"></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Container Memory Usage (MB)</h3>
+                    </div>
+                    <div class="chart-body" id="containerMemoryChartContainer"></div>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -271,7 +339,6 @@
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/InteractiveChart.js"></script>
-    <script src="../components/ApiDetailsTable.js"></script>
     <script src="../components/AuthUI.js"></script>
 
     <!-- Page Scripts -->

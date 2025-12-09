@@ -28,7 +28,6 @@
     };
     let autoRefreshInterval = null;
     let timeRangePicker = null;
-    let apiDetailsTable = null;
 
     /**
      * Initialize the page
@@ -41,7 +40,6 @@
         setupAutoRefresh();
         setupFilters();
         initializeCharts();
-        setupApiDetailsTable();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
@@ -80,12 +78,26 @@
     }
 
     /**
-     * Setup auto-refresh
+     * Setup auto-refresh and manual refresh
      */
     function setupAutoRefresh() {
+        // Manual refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.classList.add('spinning');
+                await loadMetrics();
+                refreshBtn.classList.remove('spinning');
+                notificationManager.success('Data refreshed');
+            });
+        }
+
+        // Auto-refresh toggle button
         const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+        if (!autoRefreshBtn) return;
+
         const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-        
+
         if (isEnabled) {
             autoRefreshBtn.classList.add('active');
         }
@@ -93,10 +105,10 @@
         autoRefreshBtn.addEventListener('click', () => {
             const enabled = autoRefreshBtn.classList.toggle('active');
             localStorage.setItem('observability_auto_refresh', enabled);
-            
+
             if (enabled) {
                 startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled');
+                notificationManager.success('Auto-refresh enabled (30s)');
             } else {
                 stopAutoRefresh();
                 notificationManager.info('Auto-refresh disabled');
@@ -228,6 +240,30 @@
             showLegend: true
         });
 
+        // P50 Latency Chart
+        charts.p50 = new InteractiveChart({
+            containerId: 'p50ChartContainer',
+            unit: 'ms',
+            height: 250,
+            showLegend: true
+        });
+
+        // P90 Latency Chart
+        charts.p90 = new InteractiveChart({
+            containerId: 'p90ChartContainer',
+            unit: 'ms',
+            height: 250,
+            showLegend: true
+        });
+
+        // P99 Latency Chart
+        charts.p99 = new InteractiveChart({
+            containerId: 'p99ChartContainer',
+            unit: 'ms',
+            height: 250,
+            showLegend: true
+        });
+
         // Throughput Chart - multiple services
         charts.throughput = new InteractiveChart({
             containerId: 'throughputChartContainer',
@@ -244,6 +280,22 @@
             showLegend: true
         });
 
+        // CPU Usage Chart
+        charts.cpu = new InteractiveChart({
+            containerId: 'cpuChartContainer',
+            unit: '%',
+            height: 250,
+            showLegend: true
+        });
+
+        // Memory Usage Chart
+        charts.memory = new InteractiveChart({
+            containerId: 'memoryChartContainer',
+            unit: 'MB',
+            height: 250,
+            showLegend: true
+        });
+
         // Service Metrics Chart - bar chart
         charts.serviceMetrics = new InteractiveChart({
             containerId: 'serviceMetricsChartContainer',
@@ -252,6 +304,48 @@
             height: 250,
             showLegend: true,
             fill: false
+        });
+
+        // Status Codes Chart - bar chart
+        charts.statusCodes = new InteractiveChart({
+            containerId: 'statusCodesChartContainer',
+            chartType: 'bar',
+            unit: '',
+            height: 250,
+            showLegend: true,
+            fill: false
+        });
+
+        // Pod CPU Usage Chart
+        charts.podCpu = new InteractiveChart({
+            containerId: 'podCpuChartContainer',
+            unit: '%',
+            height: 250,
+            showLegend: true
+        });
+
+        // Pod Memory Usage Chart
+        charts.podMemory = new InteractiveChart({
+            containerId: 'podMemoryChartContainer',
+            unit: 'MB',
+            height: 250,
+            showLegend: true
+        });
+
+        // Container CPU Usage Chart
+        charts.containerCpu = new InteractiveChart({
+            containerId: 'containerCpuChartContainer',
+            unit: '%',
+            height: 250,
+            showLegend: true
+        });
+
+        // Container Memory Usage Chart
+        charts.containerMemory = new InteractiveChart({
+            containerId: 'containerMemoryChartContainer',
+            unit: 'MB',
+            height: 250,
+            showLegend: true
         });
     }
 
@@ -264,14 +358,32 @@
         // Latency Chart - show by endpoint
         updateLatencyChart(metrics['api.latency'] || []);
 
+        // Separate Percentile Charts
+        updatePercentileCharts(metrics['api.latency'] || []);
+
         // Throughput Chart - show by service
         updateThroughputChart(metrics['throughput'] || []);
 
         // Error Rate Chart - show by service
         updateErrorRateChart(metrics['error.rate'] || []);
 
+        // CPU Usage Chart
+        updateCpuChart(data);
+
+        // Memory Usage Chart
+        updateMemoryChart(data);
+
         // Service Metrics Chart
         updateServiceMetricsChart(data);
+
+        // Status Codes Chart
+        updateStatusCodesChart(data);
+
+        // Pod Level Charts
+        updatePodCharts(data);
+
+        // Container Level Charts
+        updateContainerCharts(data);
     }
 
     /**
@@ -286,51 +398,276 @@
     }
 
     /**
-     * Update throughput chart with multi-series data
+     * Update separate percentile charts (P50, P90 by endpoint, P99 by operation type)
+     */
+    function updatePercentileCharts(data) {
+        if (!charts.p50 && !charts.p90 && !charts.p99) return;
+
+        const now = Date.now();
+        const timeRange = currentFilters.timeRange;
+        const dataPoints = 60;
+        const interval = timeRange / dataPoints;
+
+        // Endpoints for P50 and P90
+        const endpoints = [
+            { name: 'GET /api/v1/metrics', baseLatency: 45 },
+            { name: 'POST /api/v1/logs', baseLatency: 65 },
+            { name: 'GET /api/v1/traces', baseLatency: 55 },
+            { name: 'GET /api/v1/services', baseLatency: 35 }
+        ];
+
+        // Operation types for P99
+        const operations = [
+            { name: 'HTTP GET', baseLatency: 40 },
+            { name: 'HTTP POST', baseLatency: 70 },
+            { name: 'HTTP PUT', baseLatency: 55 },
+            { name: 'HTTP DELETE', baseLatency: 45 },
+            { name: 'Database Query', baseLatency: 85 },
+            { name: 'Cache Lookup', baseLatency: 15 }
+        ];
+
+        const p50Data = {};
+        const p90Data = {};
+        const p99Data = {};
+
+        // P50 and P90 by endpoint
+        endpoints.forEach(endpoint => {
+            p50Data[endpoint.name] = [];
+            p90Data[endpoint.name] = [];
+
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                const base = endpoint.baseLatency + Math.sin(i / 10) * 15;
+                p50Data[endpoint.name].push({ x: timestamp, y: base + Math.random() * 10 });
+                p90Data[endpoint.name].push({ x: timestamp, y: base * 1.8 + Math.random() * 15 });
+            }
+        });
+
+        // P99 by operation type
+        operations.forEach(op => {
+            p99Data[op.name] = [];
+
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                const base = op.baseLatency + Math.sin(i / 8) * 20;
+                p99Data[op.name].push({ x: timestamp, y: base * 2.5 + Math.random() * 30 });
+            }
+        });
+
+        if (charts.p50) charts.p50.setData(p50Data);
+        if (charts.p90) charts.p90.setData(p90Data);
+        if (charts.p99) charts.p99.setData(p99Data);
+    }
+
+    /**
+     * Update throughput chart with multi-series data (by API endpoint)
      */
     function updateThroughputChart(data) {
         if (!charts.throughput) return;
 
-        const seriesData = groupDataBySeries(data, 'serviceName');
+        const seriesData = groupDataBySeries(data, 'endpoint');
         charts.throughput.setData(seriesData);
     }
 
     /**
-     * Update error rate chart with multi-series data
+     * Update error rate chart with multi-series data (by API endpoint)
      */
     function updateErrorRateChart(data) {
         if (!charts.errorRate) return;
 
-        const seriesData = groupDataBySeries(data, 'serviceName');
+        const seriesData = groupDataBySeries(data, 'endpoint');
         charts.errorRate.setData(seriesData);
     }
 
     /**
-     * Update service metrics chart
+     * Update CPU usage chart
+     */
+    function updateCpuChart(data) {
+        if (!charts.cpu) return;
+
+        const now = Date.now();
+        const timeRange = currentFilters.timeRange;
+        const dataPoints = 60;
+        const interval = timeRange / dataPoints;
+
+        const services = ['api-gateway', 'auth-service', 'metrics-service', 'logs-service'];
+        const seriesData = {};
+
+        services.forEach(service => {
+            const baseUsage = 20 + Math.random() * 30;
+            seriesData[service] = [];
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                const usage = baseUsage + Math.sin(i / 8) * 15 + Math.random() * 10;
+                seriesData[service].push({ x: timestamp, y: Math.min(100, Math.max(0, usage)) });
+            }
+        });
+
+        charts.cpu.setData(seriesData);
+    }
+
+    /**
+     * Update Memory usage chart
+     */
+    function updateMemoryChart(data) {
+        if (!charts.memory) return;
+
+        const now = Date.now();
+        const timeRange = currentFilters.timeRange;
+        const dataPoints = 60;
+        const interval = timeRange / dataPoints;
+
+        const services = ['api-gateway', 'auth-service', 'metrics-service', 'logs-service'];
+        const seriesData = {};
+
+        services.forEach(service => {
+            const baseMemory = 256 + Math.random() * 512;
+            seriesData[service] = [];
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                // Memory tends to grow slowly over time with occasional GC drops
+                const growth = i * 0.5;
+                const gcDrop = (i % 15 === 0) ? -50 : 0;
+                const memory = baseMemory + growth + gcDrop + Math.random() * 20;
+                seriesData[service].push({ x: timestamp, y: Math.max(100, memory) });
+            }
+        });
+
+        charts.memory.setData(seriesData);
+    }
+
+    /**
+     * Update service metrics chart - shows request count by API endpoint
      */
     function updateServiceMetricsChart(data) {
         if (!charts.serviceMetrics) return;
 
-        // Group metrics by service
-        const serviceData = {};
+        // Group metrics by API endpoint
+        const endpointData = {};
         const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
 
         allMetrics.forEach(metric => {
-            const service = metric.serviceName || 'Unknown';
-            if (!serviceData[service]) {
-                serviceData[service] = 0;
+            const endpoint = metric.endpoint || 'Unknown';
+            if (!endpointData[endpoint]) {
+                endpointData[endpoint] = 0;
             }
-            serviceData[service]++;
+            endpointData[endpoint]++;
         });
 
         // Convert to series format for InteractiveChart
-        const services = Object.keys(serviceData);
+        const endpoints = Object.keys(endpointData);
         const seriesData = {};
-        services.forEach(service => {
-            seriesData[service] = [serviceData[service]];
+        endpoints.forEach(endpoint => {
+            seriesData[endpoint] = [endpointData[endpoint]];
         });
 
-        charts.serviceMetrics.setData(seriesData, ['Metric Count']);
+        charts.serviceMetrics.setData(seriesData, ['Request Count']);
+    }
+
+    /**
+     * Update status codes chart
+     */
+    function updateStatusCodesChart(data) {
+        if (!charts.statusCodes) return;
+
+        // Generate mock status code distribution
+        const statusCodes = {
+            '200 OK': Math.floor(Math.random() * 5000 + 8000),
+            '201 Created': Math.floor(Math.random() * 500 + 200),
+            '400 Bad Request': Math.floor(Math.random() * 100 + 50),
+            '401 Unauthorized': Math.floor(Math.random() * 50 + 10),
+            '404 Not Found': Math.floor(Math.random() * 80 + 30),
+            '500 Server Error': Math.floor(Math.random() * 30 + 5)
+        };
+
+        const seriesData = {};
+        Object.keys(statusCodes).forEach(code => {
+            seriesData[code] = [statusCodes[code]];
+        });
+
+        charts.statusCodes.setData(seriesData, ['Count']);
+    }
+
+    /**
+     * Update pod level charts
+     */
+    function updatePodCharts(data) {
+        if (!charts.podCpu && !charts.podMemory) return;
+
+        const now = Date.now();
+        const timeRange = currentFilters.timeRange;
+        const dataPoints = 60;
+        const interval = timeRange / dataPoints;
+
+        // Pod data from MockDataService
+        const pods = [
+            { name: 'api-gateway-7d8f9c6b5-x2k4m', baseCpu: 25, baseMemory: 256 },
+            { name: 'api-gateway-7d8f9c6b5-p9n3q', baseCpu: 22, baseMemory: 248 },
+            { name: 'user-service-5c4d3b2a1-h7j8k', baseCpu: 35, baseMemory: 384 },
+            { name: 'payment-service-9e8f7g6h-q1w2e', baseCpu: 40, baseMemory: 512 },
+            { name: 'auth-service-6f5e4d3c-z9x8c', baseCpu: 18, baseMemory: 192 }
+        ];
+
+        const cpuData = {};
+        const memoryData = {};
+
+        pods.forEach(pod => {
+            cpuData[pod.name] = [];
+            memoryData[pod.name] = [];
+
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                const cpuVariation = Math.sin(i / 8) * 10 + Math.random() * 5;
+                const memVariation = Math.sin(i / 12) * 50 + Math.random() * 30;
+
+                cpuData[pod.name].push({ x: timestamp, y: Math.max(0, Math.min(100, pod.baseCpu + cpuVariation)) });
+                memoryData[pod.name].push({ x: timestamp, y: Math.max(0, pod.baseMemory + memVariation) });
+            }
+        });
+
+        if (charts.podCpu) charts.podCpu.setData(cpuData);
+        if (charts.podMemory) charts.podMemory.setData(memoryData);
+    }
+
+    /**
+     * Update container level charts
+     */
+    function updateContainerCharts(data) {
+        if (!charts.containerCpu && !charts.containerMemory) return;
+
+        const now = Date.now();
+        const timeRange = currentFilters.timeRange;
+        const dataPoints = 60;
+        const interval = timeRange / dataPoints;
+
+        // Container data
+        const containers = [
+            { name: 'api-gateway (x2k4m)', baseCpu: 20, baseMemory: 180 },
+            { name: 'envoy-proxy (x2k4m)', baseCpu: 5, baseMemory: 64 },
+            { name: 'user-service (h7j8k)', baseCpu: 30, baseMemory: 320 },
+            { name: 'payment-service (q1w2e)', baseCpu: 35, baseMemory: 420 },
+            { name: 'auth-service (z9x8c)', baseCpu: 15, baseMemory: 160 }
+        ];
+
+        const cpuData = {};
+        const memoryData = {};
+
+        containers.forEach(container => {
+            cpuData[container.name] = [];
+            memoryData[container.name] = [];
+
+            for (let i = 0; i < dataPoints; i++) {
+                const timestamp = now - timeRange + (i * interval);
+                const cpuVariation = Math.sin(i / 6) * 8 + Math.random() * 4;
+                const memVariation = Math.sin(i / 10) * 40 + Math.random() * 20;
+
+                cpuData[container.name].push({ x: timestamp, y: Math.max(0, Math.min(100, container.baseCpu + cpuVariation)) });
+                memoryData[container.name].push({ x: timestamp, y: Math.max(0, container.baseMemory + memVariation) });
+            }
+        });
+
+        if (charts.containerCpu) charts.containerCpu.setData(cpuData);
+        if (charts.containerMemory) charts.containerMemory.setData(memoryData);
     }
 
     /**
@@ -379,36 +716,6 @@
     }
 
     /**
-     * Update metrics table
-     */
-    function updateTable(data) {
-        const tbody = document.getElementById('metricsTableBody');
-        if (!tbody) return;
-
-        // Use allMetrics array if available, otherwise flatten metrics object
-        const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
-
-        if (allMetrics.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">No metrics found</td></tr>';
-            return;
-        }
-
-        // Sort by timestamp (most recent first)
-        const sorted = [...allMetrics].sort((a, b) => b.timestamp - a.timestamp);
-        const recent = sorted.slice(0, 100); // Show last 100
-
-        tbody.innerHTML = recent.map(metric => `
-            <tr>
-                <td>${new Date(metric.timestamp).toLocaleString()}</td>
-                <td>${metric.serviceName || 'N/A'}</td>
-                <td>${metric.metricName || 'N/A'}</td>
-                <td>${metric.value.toFixed(2)}</td>
-                <td>${metric.endpoint || 'N/A'}</td>
-            </tr>
-        `).join('');
-    }
-
-    /**
      * Update service filter options
      */
     function updateServiceFilter(data) {
@@ -445,85 +752,6 @@
         return sorted[index] || 0;
     }
 
-    /**
-     * Setup API Details Table
-     */
-    function setupApiDetailsTable() {
-        console.log('[Metrics] Setting up API Details Table...');
-        console.log('[Metrics] ApiDetailsTable available:', typeof ApiDetailsTable !== 'undefined');
-
-        if (typeof ApiDetailsTable !== 'undefined') {
-            try {
-                apiDetailsTable = new ApiDetailsTable({
-                    containerId: 'apiDetailsTable',
-                    title: 'API Endpoint Metrics',
-                    showFilters: true,
-                    maxRows: 50
-                });
-                console.log('[Metrics] API Details Table initialized successfully');
-            } catch (error) {
-                console.error('[Metrics] Error initializing API Details Table:', error);
-            }
-        } else {
-            console.warn('[Metrics] ApiDetailsTable component not found');
-        }
-    }
-
-    /**
-     * Load API endpoint details
-     */
-    async function loadApiDetails() {
-        if (!apiDetailsTable) return;
-
-        try {
-            // Generate mock API endpoint data
-            const apiData = generateMockApiData();
-            apiDetailsTable.setData(apiData);
-        } catch (error) {
-            console.error('Error loading API details:', error);
-        }
-    }
-
-    /**
-     * Generate mock API endpoint time series data
-     */
-    function generateMockApiData() {
-        const endpoints = [
-            'GET /api/v1/metrics',
-            'POST /api/v1/metrics',
-            'GET /api/v1/logs',
-            'POST /api/v1/logs',
-            'GET /api/v1/traces',
-            'GET /api/v1/services',
-            'GET /api/v1/dashboards',
-            'GET /api/v1/alerts'
-        ];
-
-        const now = Date.now();
-        const timeSeriesData = {};
-
-        endpoints.forEach(endpoint => {
-            const dataPoints = [];
-            const baseLatency = Math.random() * 80 + 20; // 20-100ms base
-
-            // Generate 60 data points (last hour, one per minute)
-            for (let i = 60; i >= 0; i--) {
-                const timestamp = now - (i * 60 * 1000); // Go back i minutes
-                const variation = (Math.random() - 0.5) * 40; // ±20ms variation
-                const latency = Math.max(5, baseLatency + variation);
-
-                dataPoints.push({
-                    x: timestamp,
-                    y: latency
-                });
-            }
-
-            timeSeriesData[endpoint] = dataPoints;
-        });
-
-        return timeSeriesData;
-    }
-
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -535,9 +763,6 @@
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
         Object.values(charts).forEach(chart => chart && chart.destroy());
-        if (apiDetailsTable) {
-            apiDetailsTable.destroy();
-        }
     });
 
 })();

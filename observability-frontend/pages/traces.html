@@ -123,8 +123,15 @@
                     </div>
                 </div>
 
-                <!-- Auto Refresh -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                <!-- Manual Refresh -->
+                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                    </svg>
+                </button>
+
+                <!-- Auto Refresh Toggle -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
@@ -132,97 +139,115 @@
             </div>
         </header>
 
-        <!-- Page Content -->
-        <div class="page-content">
-            <!-- Filters -->
-            <div class="filters-bar">
-                <div class="form-group">
-                    <label class="form-label">Search Trace ID</label>
-                    <input type="text" class="form-input" id="traceIdInput" placeholder="Enter trace ID...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Service</label>
-                    <select class="form-input" id="serviceFilter">
-                        <option value="">All Services</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Min Duration (ms)</label>
-                    <input type="number" class="form-input" id="minDurationInput" placeholder="0">
-                </div>
-                <button class="btn btn-primary" id="applyFiltersBtn">Apply Filters</button>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Traces</span>
-                    </div>
-                    <div class="stat-value" id="totalTraces">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Avg Duration</span>
-                    </div>
-                    <div class="stat-value" id="avgDuration">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">P95 Duration</span>
-                    </div>
-                    <div class="stat-value" id="p95Duration">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Error Traces</span>
-                    </div>
-                    <div class="stat-value" id="errorTraces">--</div>
+        <!-- Page Content - New Relic Style -->
+        <div class="page-content traces-page">
+            <!-- Query Bar -->
+            <div class="traces-query-bar">
+                <div class="query-input-wrapper">
+                    <svg class="query-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85a1.007 1.007 0 00-.115-.1zM12 6.5a5.5 5.5 0 11-11 0 5.5 5.5 0 0111 0z"/>
+                    </svg>
+                    <input type="text" class="query-input" id="traceQueryInput" placeholder="Search traces... (e.g., service:api-gateway duration:>100 error:true)">
+                    <button class="btn btn-primary btn-sm" id="runTraceQueryBtn">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M4 2l10 6-10 6V2z"/>
+                        </svg>
+                        Run
+                    </button>
                 </div>
             </div>
 
-            <!-- Traces List -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Recent Traces</h3>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Trace ID</th>
-                                <th>Service</th>
-                                <th>Operation</th>
-                                <th>Duration</th>
-                                <th>Spans</th>
-                                <th>Timestamp</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tracesTableBody">
-                            <tr>
-                                <td colspan="7" class="text-center">Loading traces...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Trace Detail Modal -->
-            <div class="modal" id="traceDetailModal">
-                <div class="modal-overlay"></div>
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Trace Details</h3>
-                        <button class="btn btn-icon btn-sm modal-close" id="closeTraceModal">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                <path d="M4 4l8 8m0-8l-8 8"/>
+            <!-- Traces Layout -->
+            <div class="traces-layout">
+                <!-- Facets Sidebar -->
+                <aside class="traces-facets">
+                    <div class="facets-header">
+                        <h3>Filters</h3>
+                        <button class="btn btn-icon btn-xs" id="clearTraceFiltersBtn" title="Clear all filters">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
                             </svg>
                         </button>
                     </div>
-                    <div class="modal-body" id="traceDetailBody">
-                        <!-- Trace details will be rendered here -->
+
+                    <!-- Duration Filter - using FacetFilter component -->
+                    <div id="durationFacetContainer"></div>
+
+                    <!-- Status Filter - using FacetFilter component -->
+                    <div id="statusFacetContainer"></div>
+
+                    <!-- Service Filter - using FacetFilter component -->
+                    <div id="serviceFacetContainer"></div>
+
+                    <!-- Operation Filter - using FacetFilter component -->
+                    <div id="operationFacetContainer"></div>
+
+                    <!-- Pod Filter - using FacetFilter component -->
+                    <div id="podFacetContainer"></div>
+
+                    <!-- Container Filter - using FacetFilter component -->
+                    <div id="containerFacetContainer"></div>
+                </aside>
+
+                <!-- Main Traces Area -->
+                <div class="traces-main">
+                    <!-- Stats Bar -->
+                    <div class="traces-stats-bar">
+                        <div class="trace-stat">
+                            <span class="trace-stat-value" id="totalTraces">0</span>
+                            <span class="trace-stat-label">Traces</span>
+                        </div>
+                        <div class="trace-stat">
+                            <span class="trace-stat-value" id="avgDuration">0ms</span>
+                            <span class="trace-stat-label">Avg Duration</span>
+                        </div>
+                        <div class="trace-stat">
+                            <span class="trace-stat-value" id="p95Duration">0ms</span>
+                            <span class="trace-stat-label">P95</span>
+                        </div>
+                        <div class="trace-stat error">
+                            <span class="trace-stat-value" id="errorTraces">0</span>
+                            <span class="trace-stat-label">Errors</span>
+                        </div>
                     </div>
+
+                    <!-- Trace Scatter Plot -->
+                    <div class="traces-scatter-container">
+                        <div class="scatter-header">
+                            <span class="scatter-title">Trace Duration Distribution</span>
+                        </div>
+                        <div class="traces-scatter" id="tracesScatter">
+                            <!-- Scatter plot populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Traces List -->
+                    <div class="traces-list-container">
+                        <div class="traces-list-header">
+                            <div class="traces-list-col col-trace">Trace</div>
+                            <div class="traces-list-col col-duration">Duration</div>
+                            <div class="traces-list-col col-spans">Spans</div>
+                            <div class="traces-list-col col-timestamp">Timestamp</div>
+                        </div>
+                        <div class="traces-list-body" id="tracesListBody">
+                            <div class="traces-loading">Loading traces...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trace Detail Panel (Slide-in) -->
+            <div class="trace-detail-panel" id="traceDetailPanel">
+                <div class="trace-detail-header">
+                    <h3>Trace Details</h3>
+                    <button class="btn btn-icon btn-sm" id="closeTracePanel">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="trace-detail-content" id="traceDetailContent">
+                    <!-- Trace waterfall view populated by JS -->
                 </div>
             </div>
         </div>
@@ -241,6 +266,7 @@
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/AuthUI.js"></script>
+    <script src="../components/FacetFilter.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/traces.js"></script>

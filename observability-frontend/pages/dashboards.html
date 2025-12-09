@@ -126,8 +126,15 @@
                     </div>
                 </div>
 
-                <!-- Auto Refresh -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                <!-- Manual Refresh -->
+                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                    </svg>
+                </button>
+
+                <!-- Auto Refresh Toggle -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
@@ -137,6 +144,23 @@
 
         <!-- Page Content -->
         <div class="page-content">
+            <!-- Dashboard Header -->
+            <div class="dashboard-page-header">
+                <div class="dashboard-header-left">
+                    <h1 class="page-title">Custom Dashboards</h1>
+                    <p class="page-subtitle">Create and manage your custom monitoring dashboards</p>
+                </div>
+                <div class="dashboard-header-right">
+                    <button class="btn btn-primary" id="createDashboardHeaderBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        New Dashboard
+                    </button>
+                </div>
+            </div>
+
             <!-- Dashboard List View -->
             <div id="dashboardListView">
                 <div class="dashboards-grid" id="dashboardsGrid">
@@ -144,7 +168,7 @@
                 </div>
             </div>
 
-            <!-- Dashboard View -->
+            <!-- Dashboard View (when viewing a specific dashboard) -->
             <div id="dashboardView" class="hidden">
                 <div class="dashboard-toolbar">
                     <button class="btn btn-ghost btn-sm" id="backToDashboards">
@@ -153,9 +177,9 @@
                         </svg>
                         Back to Dashboards
                     </button>
-                    
+
                     <div class="dashboard-toolbar-right">
-                        <button class="btn btn-secondary btn-sm" id="addWidgetBtn">
+                        <button class="btn btn-primary btn-sm" id="addWidgetBtn">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                 <line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                                 <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -168,7 +192,7 @@
                             </svg>
                             Edit
                         </button>
-                        <button class="btn btn-secondary btn-sm" id="deleteDashboardBtn">
+                        <button class="btn btn-danger btn-sm" id="deleteDashboardBtn">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                 <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                             </svg>
@@ -181,9 +205,6 @@
                     <!-- Widgets populated by JS -->
                 </div>
             </div>
-
-            <!-- API Endpoint Details -->
-            <div id="apiDetailsTable"></div>
         </div>
     </main>
 
@@ -304,7 +325,6 @@
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/InteractiveChart.js"></script>
-    <script src="../components/ApiDetailsTable.js"></script>
     <script src="../components/AuthUI.js"></script>
 
     <!-- Page Scripts -->

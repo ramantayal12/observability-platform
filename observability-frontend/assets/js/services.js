@@ -72,12 +72,26 @@
     }
 
     /**
-     * Setup auto-refresh
+     * Setup auto-refresh and manual refresh
      */
     function setupAutoRefresh() {
+        // Manual refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.classList.add('spinning');
+                await loadServices();
+                refreshBtn.classList.remove('spinning');
+                notificationManager.success('Data refreshed');
+            });
+        }
+
+        // Auto-refresh toggle button
         const autoRefreshBtn = document.getElementById('autoRefreshBtn');
+        if (!autoRefreshBtn) return;
+
         const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-        
+
         if (isEnabled) {
             autoRefreshBtn.classList.add('active');
         }
@@ -85,10 +99,10 @@
         autoRefreshBtn.addEventListener('click', () => {
             const enabled = autoRefreshBtn.classList.toggle('active');
             localStorage.setItem('observability_auto_refresh', enabled);
-            
+
             if (enabled) {
                 startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled');
+                notificationManager.success('Auto-refresh enabled (30s)');
             } else {
                 stopAutoRefresh();
                 notificationManager.info('Auto-refresh disabled');

@@ -123,8 +123,15 @@
                     </div>
                 </div>
 
-                <!-- Auto Refresh -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                <!-- Manual Refresh -->
+                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                    </svg>
+                </button>
+
+                <!-- Auto Refresh Toggle -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
@@ -132,138 +139,116 @@
             </div>
         </header>
 
-        <!-- Page Content -->
-        <div class="page-content">
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Active Alerts</span>
-                    </div>
-                    <div class="stat-value stat-error" id="activeAlerts">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Alert Rules</span>
-                    </div>
-                    <div class="stat-value" id="totalRules">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Triggered Today</span>
-                    </div>
-                    <div class="stat-value" id="triggeredToday">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Muted</span>
-                    </div>
-                    <div class="stat-value" id="mutedAlerts">--</div>
+        <!-- Page Content - New Relic Style -->
+        <div class="page-content alerts-page">
+            <!-- Alerts Header -->
+            <div class="alerts-header">
+                <div class="alerts-header-left">
+                    <h1>Alerts & AI</h1>
+                    <p class="alerts-subtitle">Monitor, detect, and respond to issues in real-time</p>
                 </div>
             </div>
 
-            <!-- Active Alerts -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Active Alerts</h3>
-                </div>
-                <div class="alerts-container" id="activeAlertsContainer">
-                    <div class="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 64 64" fill="currentColor" opacity="0.3">
-                            <path d="M32 8a2 2 0 00-2 2v1.17A5 5 0 0025 16v16l-8 8v4h30v-4l-8-8V16a5 5 0 00-5-5.83V10a2 2 0 00-2-2z"/>
-                        </svg>
-                        <p>No active alerts</p>
+            <!-- Alerts Layout -->
+            <div class="alerts-layout">
+                <!-- Facets Sidebar -->
+                <aside class="alerts-facets">
+                    <div class="facets-header">
+                        <h3>Filters</h3>
+                        <button class="btn btn-icon btn-xs" id="clearAlertFiltersBtn" title="Clear all filters">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- State Filter - using FacetFilter component -->
+                    <div id="stateFacetContainer"></div>
+
+                    <!-- Priority Filter - using FacetFilter component -->
+                    <div id="priorityFacetContainer"></div>
+
+                    <!-- Source Filter - using FacetFilter component -->
+                    <div id="sourceFacetContainer"></div>
+
+                    <!-- Pod Filter - using FacetFilter component -->
+                    <div id="podFacetContainer"></div>
+
+                    <!-- Container Filter - using FacetFilter component -->
+                    <div id="containerFacetContainer"></div>
+                </aside>
+
+                <!-- Main Alerts Area -->
+                <div class="alerts-main">
+                    <!-- Stats Bar -->
+                    <div class="alerts-stats-bar">
+                        <div class="alert-stat critical">
+                            <span class="alert-stat-value" id="activeAlerts">0</span>
+                            <span class="alert-stat-label">Open Incidents</span>
+                        </div>
+                        <div class="alert-stat">
+                            <span class="alert-stat-value" id="totalRules">0</span>
+                            <span class="alert-stat-label">Alert Policies</span>
+                        </div>
+                        <div class="alert-stat">
+                            <span class="alert-stat-value" id="triggeredToday">0</span>
+                            <span class="alert-stat-label">Triggered (24h)</span>
+                        </div>
+                        <div class="alert-stat">
+                            <span class="alert-stat-value" id="mutedAlerts">0</span>
+                            <span class="alert-stat-label">Muted</span>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="alerts-tabs">
+                        <button class="alert-tab active" data-tab="incidents">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 12.5a5.5 5.5 0 110-11 5.5 5.5 0 010 11zM8 4a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 4zm0 7a1 1 0 100-2 1 1 0 000 2z"/>
+                            </svg>
+                            Incidents
+                        </button>
+                        <button class="alert-tab" data-tab="policies">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M2 2.5A.5.5 0 012.5 2h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5zm0 4A.5.5 0 012.5 6h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5zm0 4a.5.5 0 01.5-.5h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5zm0 4a.5.5 0 01.5-.5h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5z"/>
+                            </svg>
+                            Alert Policies
+                        </button>
+                    </div>
+
+                    <!-- Incidents List -->
+                    <div class="alerts-content" id="incidentsTab">
+                        <div class="incidents-list" id="incidentsList">
+                            <div class="alerts-loading">Loading incidents...</div>
+                        </div>
+                    </div>
+
+                    <!-- Policies List -->
+                    <div class="alerts-content hidden" id="policiesTab">
+                        <div class="policies-list" id="policiesList">
+                            <div class="alerts-loading">Loading policies...</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Alert Rules -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Alert Rules</h3>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rule Name</th>
-                                <th>Condition</th>
-                                <th>Severity</th>
-                                <th>Status</th>
-                                <th>Last Triggered</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alertRulesBody">
-                            <tr>
-                                <td colspan="6" class="text-center">Loading alert rules...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
-    </main>
 
-    <!-- New Alert Rule Modal -->
-    <div class="modal" id="newAlertModal">
-        <div class="modal-overlay"></div>
-        <div class="modal-dialog">
-            <div class="modal-header">
-                <h3 class="modal-title">Create Alert Rule</h3>
-                <button class="btn btn-icon btn-sm modal-close" id="closeAlertModal">
+        <!-- Incident Detail Panel -->
+        <div class="incident-detail-panel" id="incidentDetailPanel">
+            <div class="incident-detail-header">
+                <h3>Incident Details</h3>
+                <button class="btn btn-icon btn-sm" id="closeIncidentPanel">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M4 4l8 8m0-8l-8 8"/>
+                        <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
                     </svg>
                 </button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Rule Name</label>
-                    <input type="text" class="form-input" id="alertName" placeholder="High API Latency">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Metric</label>
-                    <select class="form-input" id="alertMetric">
-                        <option value="api.latency">API Latency</option>
-                        <option value="error.rate">Error Rate</option>
-                        <option value="throughput">Throughput</option>
-                        <option value="cpu.usage">CPU Usage</option>
-                        <option value="memory.usage">Memory Usage</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Condition</label>
-                    <div style="display: flex; gap: 8px;">
-                        <select class="form-input" id="alertOperator">
-                            <option value=">">Greater than</option>
-                            <option value="<">Less than</option>
-                            <option value=">=">Greater or equal</option>
-                            <option value="<=">Less or equal</option>
-                            <option value="==">Equal to</option>
-                        </select>
-                        <input type="number" class="form-input" id="alertThreshold" placeholder="100">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Severity</label>
-                    <select class="form-input" id="alertSeverity">
-                        <option value="critical">Critical</option>
-                        <option value="warning">Warning</option>
-                        <option value="info">Info</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Service (Optional)</label>
-                    <input type="text" class="form-input" id="alertService" placeholder="All services">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelAlertBtn">Cancel</button>
-                <button class="btn btn-primary" id="createAlertBtn">Create Alert</button>
+            <div class="incident-detail-content" id="incidentDetailContent">
+                <!-- Incident details populated by JS -->
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Core Scripts -->
     <script src="../config/constants.js"></script>
@@ -278,6 +263,7 @@
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/AuthUI.js"></script>
+    <script src="../components/FacetFilter.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/alerts.js"></script>

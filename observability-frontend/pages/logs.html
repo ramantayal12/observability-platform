@@ -123,8 +123,15 @@
                     </div>
                 </div>
 
-                <!-- Auto Refresh -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                <!-- Manual Refresh -->
+                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                    </svg>
+                </button>
+
+                <!-- Auto Refresh Toggle -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
                     </svg>
@@ -132,72 +139,97 @@
             </div>
         </header>
 
-        <!-- Page Content -->
-        <div class="page-content">
-            <!-- Filters -->
-            <div class="filters-bar">
-                <div class="form-group">
-                    <label class="form-label">Search</label>
-                    <input type="text" class="form-input" id="searchInput" placeholder="Search logs...">
+        <!-- Page Content - New Relic Style -->
+        <div class="page-content logs-page">
+            <!-- Query Bar -->
+            <div class="logs-query-bar">
+                <div class="query-input-wrapper">
+                    <svg class="query-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85a1.007 1.007 0 00-.115-.1zM12 6.5a5.5 5.5 0 11-11 0 5.5 5.5 0 0111 0z"/>
+                    </svg>
+                    <input type="text" class="query-input" id="queryInput" placeholder="Search logs... (e.g., level:ERROR service:api-gateway message:timeout)">
+                    <button class="btn btn-primary btn-sm" id="runQueryBtn">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M4 2l10 6-10 6V2z"/>
+                        </svg>
+                        Run
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Service</label>
-                    <select class="form-input" id="serviceFilter">
-                        <option value="">All Services</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Level</label>
-                    <select class="form-input" id="levelFilter">
-                        <option value="">All Levels</option>
-                        <option value="ERROR">ERROR</option>
-                        <option value="WARN">WARN</option>
-                        <option value="INFO">INFO</option>
-                        <option value="DEBUG">DEBUG</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary" id="applyFiltersBtn">Apply Filters</button>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Logs</span>
-                    </div>
-                    <div class="stat-value" id="totalLogs">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Errors</span>
-                    </div>
-                    <div class="stat-value" id="errorCount">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Warnings</span>
-                    </div>
-                    <div class="stat-value" id="warnCount">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Info</span>
-                    </div>
-                    <div class="stat-value" id="infoCount">--</div>
+                <div class="query-actions">
+                    <button class="btn btn-icon btn-sm" id="liveTailBtn" title="Live Tail">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="8" cy="8" r="3"/>
+                        </svg>
+                        <span class="live-tail-label">Live</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="exportLogsBtn">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M.5 9.9a.5.5 0 01.5.5v2.5a1 1 0 001 1h12a1 1 0 001-1v-2.5a.5.5 0 011 0v2.5a2 2 0 01-2 2H2a2 2 0 01-2-2v-2.5a.5.5 0 01.5-.5z"/>
+                            <path d="M7.646 11.854a.5.5 0 00.708 0l3-3a.5.5 0 00-.708-.708L8.5 10.293V1.5a.5.5 0 00-1 0v8.793L5.354 8.146a.5.5 0 10-.708.708l3 3z"/>
+                        </svg>
+                        Export
+                    </button>
                 </div>
             </div>
 
-            <!-- Logs List -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3 class="chart-title">Log Stream</h3>
-                    <div class="chart-actions">
-                        <button class="btn btn-secondary btn-sm" id="clearLogsBtn">Clear</button>
-                        <button class="btn btn-secondary btn-sm" id="exportLogsBtn">Export</button>
+            <!-- Facets Sidebar + Main Content -->
+            <div class="logs-layout">
+                <!-- Facets/Attributes Panel -->
+                <aside class="logs-facets">
+                    <div class="facets-header">
+                        <h3>Attributes</h3>
+                        <button class="btn btn-icon btn-xs" id="clearFiltersBtn" title="Clear all filters">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
+                            </svg>
+                        </button>
                     </div>
-                </div>
-                <div class="logs-container" id="logsContainer">
-                    <div class="logs-loading">Loading logs...</div>
+
+                    <!-- Level Facet - using FacetFilter component -->
+                    <div id="levelFacetContainer"></div>
+
+                    <!-- Service Facet - using FacetFilter component -->
+                    <div id="serviceFacetContainer"></div>
+
+                    <!-- Logger Facet - using FacetFilter component -->
+                    <div id="loggerFacetContainer"></div>
+
+                    <!-- Pod Facet - using FacetFilter component -->
+                    <div id="podFacetContainer"></div>
+
+                    <!-- Container Facet - using FacetFilter component -->
+                    <div id="containerFacetContainer"></div>
+                </aside>
+
+                <!-- Main Logs Area -->
+                <div class="logs-main">
+                    <!-- Log Histogram -->
+                    <div class="logs-histogram-container">
+                        <div class="histogram-header">
+                            <span class="histogram-title">Log Volume</span>
+                            <div class="histogram-stats">
+                                <span class="stat-item"><span class="stat-count" id="totalLogs">0</span> logs</span>
+                                <span class="stat-item error"><span class="stat-count" id="errorCount">0</span> errors</span>
+                                <span class="stat-item warning"><span class="stat-count" id="warnCount">0</span> warnings</span>
+                            </div>
+                        </div>
+                        <div class="logs-histogram" id="logsHistogram">
+                            <!-- Histogram bars populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Logs Table -->
+                    <div class="logs-table-container">
+                        <div class="logs-table-header">
+                            <div class="logs-table-col col-timestamp">Timestamp</div>
+                            <div class="logs-table-col col-level">Level</div>
+                            <div class="logs-table-col col-service">Service</div>
+                            <div class="logs-table-col col-message">Message</div>
+                        </div>
+                        <div class="logs-table-body" id="logsTableBody">
+                            <div class="logs-loading">Loading logs...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -216,6 +248,7 @@
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/AuthUI.js"></script>
+    <script src="../components/FacetFilter.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/logs.js"></script>

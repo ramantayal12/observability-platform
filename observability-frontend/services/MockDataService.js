@@ -6,6 +6,30 @@ class MockDataService {
     constructor() {
         this.services = ['api-gateway', 'user-service', 'payment-service', 'notification-service', 'auth-service'];
         this.operations = ['GET /api/users', 'POST /api/orders', 'GET /api/products', 'PUT /api/users/:id', 'DELETE /api/orders/:id'];
+
+        // Pod and container data
+        this.pods = [
+            { name: 'api-gateway-7d8f9c6b5-x2k4m', service: 'api-gateway', node: 'node-1' },
+            { name: 'api-gateway-7d8f9c6b5-p9n3q', service: 'api-gateway', node: 'node-2' },
+            { name: 'user-service-5c4d3b2a1-h7j8k', service: 'user-service', node: 'node-1' },
+            { name: 'user-service-5c4d3b2a1-m4n5p', service: 'user-service', node: 'node-3' },
+            { name: 'payment-service-9e8f7g6h-q1w2e', service: 'payment-service', node: 'node-2' },
+            { name: 'payment-service-9e8f7g6h-r3t4y', service: 'payment-service', node: 'node-1' },
+            { name: 'notification-service-1a2b3c4d-u5i6o', service: 'notification-service', node: 'node-3' },
+            { name: 'auth-service-6f5e4d3c-z9x8c', service: 'auth-service', node: 'node-2' }
+        ];
+
+        this.containers = [
+            { name: 'api-gateway', pod: 'api-gateway-7d8f9c6b5-x2k4m', image: 'observex/api-gateway:v1.2.3' },
+            { name: 'envoy-proxy', pod: 'api-gateway-7d8f9c6b5-x2k4m', image: 'envoyproxy/envoy:v1.28' },
+            { name: 'api-gateway', pod: 'api-gateway-7d8f9c6b5-p9n3q', image: 'observex/api-gateway:v1.2.3' },
+            { name: 'user-service', pod: 'user-service-5c4d3b2a1-h7j8k', image: 'observex/user-service:v2.1.0' },
+            { name: 'user-service', pod: 'user-service-5c4d3b2a1-m4n5p', image: 'observex/user-service:v2.1.0' },
+            { name: 'payment-service', pod: 'payment-service-9e8f7g6h-q1w2e', image: 'observex/payment-service:v1.5.2' },
+            { name: 'payment-service', pod: 'payment-service-9e8f7g6h-r3t4y', image: 'observex/payment-service:v1.5.2' },
+            { name: 'notification-service', pod: 'notification-service-1a2b3c4d-u5i6o', image: 'observex/notification:v1.0.1' },
+            { name: 'auth-service', pod: 'auth-service-6f5e4d3c-z9x8c', image: 'observex/auth-service:v3.0.0' }
+        ];
     }
 
     /**
@@ -19,20 +43,51 @@ class MockDataService {
 
         console.log(`[MockDataService] Generating overview for time range: ${this.formatTimeRange(timeRange)} (${dataPoints} points)`);
 
+        // Define API endpoints for detailed metrics
+        const apiEndpoints = [
+            { endpoint: 'GET /api/v1/metrics', baseLatency: 45, baseThroughput: 1200, baseError: 0.5 },
+            { endpoint: 'POST /api/v1/metrics', baseLatency: 85, baseThroughput: 800, baseError: 1.2 },
+            { endpoint: 'GET /api/v1/logs', baseLatency: 120, baseThroughput: 600, baseError: 0.8 },
+            { endpoint: 'POST /api/v1/logs', baseLatency: 95, baseThroughput: 400, baseError: 2.1 },
+            { endpoint: 'GET /api/v1/traces', baseLatency: 180, baseThroughput: 350, baseError: 1.5 },
+            { endpoint: 'GET /api/v1/services', baseLatency: 55, baseThroughput: 900, baseError: 0.3 },
+            { endpoint: 'GET /api/v1/dashboards', baseLatency: 65, baseThroughput: 500, baseError: 0.4 },
+            { endpoint: 'GET /api/v1/alerts', baseLatency: 40, baseThroughput: 700, baseError: 0.2 }
+        ];
+
+        // Generate API endpoint-level time series data
+        const latencyData = [];
+        const throughputData = [];
+        const errorRateData = [];
+
+        apiEndpoints.forEach(api => {
+            const latency = this.generateTimeSeriesDataWithPattern(dataPoints, api.baseLatency * 0.7, api.baseLatency * 1.5, startTime, endTime, 'latency');
+            latency.forEach(d => { d.endpoint = api.endpoint; });
+            latencyData.push(...latency);
+
+            const throughput = this.generateTimeSeriesDataWithPattern(dataPoints, api.baseThroughput * 0.6, api.baseThroughput * 1.4, startTime, endTime, 'throughput');
+            throughput.forEach(d => { d.endpoint = api.endpoint; });
+            throughputData.push(...throughput);
+
+            const errors = this.generateTimeSeriesDataWithPattern(dataPoints, 0, api.baseError * 3, startTime, endTime, 'error');
+            errors.forEach(d => { d.endpoint = api.endpoint; });
+            errorRateData.push(...errors);
+        });
+
         return {
             stats: {
                 avgLatency: this.randomValue(150, 250),
                 throughput: this.randomValue(800, 1200),
                 errorRate: this.randomValue(1, 5),
-                activeServices: 5
+                activeServices: apiEndpoints.length
             },
-            latencyData: this.generateTimeSeriesDataWithPattern(dataPoints, 100, 300, startTime, endTime, 'latency'),
-            throughputData: this.generateTimeSeriesDataWithPattern(dataPoints, 700, 1300, startTime, endTime, 'throughput'),
-            errorRateData: this.generateTimeSeriesDataWithPattern(dataPoints, 0, 10, startTime, endTime, 'error'),
-            serviceLatency: this.services.map(service => ({
-                serviceName: service,
-                avgLatency: this.randomValue(80, 250),
-                p95Latency: this.randomValue(200, 400),
+            latencyData: latencyData,
+            throughputData: throughputData,
+            errorRateData: errorRateData,
+            serviceLatency: apiEndpoints.map(api => ({
+                serviceName: api.endpoint,
+                avgLatency: this.randomValue(api.baseLatency * 0.8, api.baseLatency * 1.2),
+                p95Latency: this.randomValue(api.baseLatency * 1.5, api.baseLatency * 2),
                 timestamp: endTime
             })),
             recentActivity: this.generateRecentActivity(10),
@@ -59,46 +114,97 @@ class MockDataService {
 
         console.log(`[MockDataService] Generating metrics for time range: ${this.formatTimeRange(timeRange)} (${dataPoints} points)`);
 
-        // Generate time series data for each metric type with varying patterns
-        const latencyTimeSeries = this.generateTimeSeriesDataWithPattern(
-            dataPoints, 100, 300, startTime, endTime, 'latency'
-        );
-        const throughputTimeSeries = this.generateTimeSeriesDataWithPattern(
-            dataPoints, 500, 1500, startTime, endTime, 'throughput'
-        );
-        const errorRateTimeSeries = this.generateTimeSeriesDataWithPattern(
-            dataPoints, 0, 10, startTime, endTime, 'error'
-        );
+        // Define API endpoints for detailed metrics
+        const apiEndpoints = [
+            { endpoint: 'GET /api/v1/metrics', baseLatency: 45, baseThroughput: 1200, baseError: 0.5 },
+            { endpoint: 'POST /api/v1/metrics', baseLatency: 85, baseThroughput: 800, baseError: 1.2 },
+            { endpoint: 'GET /api/v1/logs', baseLatency: 120, baseThroughput: 600, baseError: 0.8 },
+            { endpoint: 'POST /api/v1/logs', baseLatency: 95, baseThroughput: 400, baseError: 2.1 },
+            { endpoint: 'GET /api/v1/traces', baseLatency: 180, baseThroughput: 350, baseError: 1.5 },
+            { endpoint: 'GET /api/v1/services', baseLatency: 55, baseThroughput: 900, baseError: 0.3 },
+            { endpoint: 'GET /api/v1/dashboards', baseLatency: 65, baseThroughput: 500, baseError: 0.4 },
+            { endpoint: 'GET /api/v1/alerts', baseLatency: 40, baseThroughput: 700, baseError: 0.2 }
+        ];
+
+        // Generate time series data for each API endpoint
+        const latencyTimeSeries = [];
+        const throughputTimeSeries = [];
+        const errorRateTimeSeries = [];
+
+        apiEndpoints.forEach(api => {
+            // Generate latency data for this endpoint
+            const latencyData = this.generateTimeSeriesDataWithPattern(
+                dataPoints,
+                api.baseLatency * 0.7,
+                api.baseLatency * 1.5,
+                startTime,
+                endTime,
+                'latency'
+            );
+            latencyData.forEach(d => {
+                d.endpoint = api.endpoint;
+                d.serviceName = api.endpoint.split('/')[3] || 'api';
+            });
+            latencyTimeSeries.push(...latencyData);
+
+            // Generate throughput data for this endpoint
+            const throughputData = this.generateTimeSeriesDataWithPattern(
+                dataPoints,
+                api.baseThroughput * 0.6,
+                api.baseThroughput * 1.4,
+                startTime,
+                endTime,
+                'throughput'
+            );
+            throughputData.forEach(d => {
+                d.endpoint = api.endpoint;
+                d.serviceName = api.endpoint.split('/')[3] || 'api';
+            });
+            throughputTimeSeries.push(...throughputData);
+
+            // Generate error rate data for this endpoint
+            const errorData = this.generateTimeSeriesDataWithPattern(
+                dataPoints,
+                0,
+                api.baseError * 3,
+                startTime,
+                endTime,
+                'error'
+            );
+            errorData.forEach(d => {
+                d.endpoint = api.endpoint;
+                d.serviceName = api.endpoint.split('/')[3] || 'api';
+            });
+            errorRateTimeSeries.push(...errorData);
+        });
 
         // Generate flat metrics array for table
-        const metricsArray = this.services
-            .filter(s => !service || s === service)
-            .flatMap(serviceName => [
-                {
-                    serviceName,
-                    metricName: 'api.latency',
-                    value: this.randomValue(100, 300),
-                    timestamp: endTime,
-                    unit: 'ms',
-                    endpoint: '/api/v1/' + serviceName.toLowerCase()
-                },
-                {
-                    serviceName,
-                    metricName: 'throughput',
-                    value: this.randomValue(500, 1500),
-                    timestamp: endTime,
-                    unit: 'req/min',
-                    endpoint: '/api/v1/' + serviceName.toLowerCase()
-                },
-                {
-                    serviceName,
-                    metricName: 'error.rate',
-                    value: this.randomValue(0, 8),
-                    timestamp: endTime,
-                    unit: 'errors/min',
-                    endpoint: '/api/v1/' + serviceName.toLowerCase()
-                }
-            ]);
+        const metricsArray = apiEndpoints.flatMap(api => [
+            {
+                serviceName: api.endpoint.split('/')[3] || 'api',
+                metricName: 'api.latency',
+                value: this.randomValue(api.baseLatency * 0.8, api.baseLatency * 1.2),
+                timestamp: endTime,
+                unit: 'ms',
+                endpoint: api.endpoint
+            },
+            {
+                serviceName: api.endpoint.split('/')[3] || 'api',
+                metricName: 'throughput',
+                value: this.randomValue(api.baseThroughput * 0.8, api.baseThroughput * 1.2),
+                timestamp: endTime,
+                unit: 'req/min',
+                endpoint: api.endpoint
+            },
+            {
+                serviceName: api.endpoint.split('/')[3] || 'api',
+                metricName: 'error.rate',
+                value: this.randomValue(0, api.baseError * 2),
+                timestamp: endTime,
+                unit: 'errors/min',
+                endpoint: api.endpoint
+            }
+        ]);
 
         // Calculate statistics
         const calculateStats = (data) => {
@@ -159,13 +265,22 @@ class MockDataService {
 
         for (let i = 0; i < count; i++) {
             const level = levels[Math.floor(Math.random() * levels.length)];
+            const service = this.services[Math.floor(Math.random() * this.services.length)];
+            const servicePods = this.pods.filter(p => p.service === service);
+            const pod = servicePods.length > 0 ? servicePods[Math.floor(Math.random() * servicePods.length)] : this.pods[0];
+            const podContainers = this.containers.filter(c => c.pod === pod.name);
+            const container = podContainers.length > 0 ? podContainers[Math.floor(Math.random() * podContainers.length)] : this.containers[0];
+
             logs.push({
                 timestamp: now - (i * 5000),
                 level,
-                serviceName: this.services[Math.floor(Math.random() * this.services.length)],
+                serviceName: service,
                 message: messages[Math.floor(Math.random() * messages.length)],
                 logger: 'com.observability.service.Handler',
-                threadName: `http-nio-8080-exec-${Math.floor(Math.random() * 10)}`
+                threadName: `http-nio-8080-exec-${Math.floor(Math.random() * 10)}`,
+                pod: pod.name,
+                container: container.name,
+                node: pod.node
             });
         }
 
@@ -184,15 +299,23 @@ class MockDataService {
             const spanCount = this.randomInt(2, 8);
             const duration = this.randomValue(50, 500);
             const traceId = this.generateId();
-            
+            const service = this.services[Math.floor(Math.random() * this.services.length)];
+            const servicePods = this.pods.filter(p => p.service === service);
+            const pod = servicePods.length > 0 ? servicePods[Math.floor(Math.random() * servicePods.length)] : this.pods[0];
+            const podContainers = this.containers.filter(c => c.pod === pod.name);
+            const container = podContainers.length > 0 ? podContainers[Math.floor(Math.random() * podContainers.length)] : this.containers[0];
+
             traces.push({
                 traceId,
-                serviceName: this.services[Math.floor(Math.random() * this.services.length)],
+                serviceName: service,
                 operationName: this.operations[Math.floor(Math.random() * this.operations.length)],
                 duration,
                 spans: this.generateSpans(spanCount, duration),
                 timestamp: now - (i * 10000),
-                error: Math.random() < 0.1
+                error: Math.random() < 0.1,
+                pod: pod.name,
+                container: container.name,
+                node: pod.node
             });
         }
 
