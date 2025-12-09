@@ -133,4 +133,109 @@ public class DashboardController {
                         "count", recentTraces.size(),
                         "recent", recentTraces));
     }
+
+    @GetMapping("/services")
+    public Map<String, Object> getServices() {
+        // Get all unique services from metrics
+        List<MetricData> allMetrics = dataStore.getRecentMetrics(1000);
+
+        Map<String, Map<String, Object>> servicesMap = new HashMap<>();
+
+        allMetrics.forEach(metric -> {
+            String service = metric.getServiceName();
+            if (service != null && !service.isEmpty()) {
+                servicesMap.putIfAbsent(service, new HashMap<>());
+                Map<String, Object> serviceData = servicesMap.get(service);
+
+                // Count metrics
+                serviceData.put("metricCount",
+                    ((Integer) serviceData.getOrDefault("metricCount", 0)) + 1);
+
+                // Track last seen
+                long lastSeen = (long) serviceData.getOrDefault("lastSeen", 0L);
+                if (metric.getTimestamp() > lastSeen) {
+                    serviceData.put("lastSeen", metric.getTimestamp());
+                }
+            }
+        });
+
+        // Get logs per service
+        List<LogEntry> allLogs = dataStore.getRecentLogs(1000);
+        allLogs.forEach(log -> {
+            String service = log.getServiceName();
+            if (service != null && !service.isEmpty()) {
+                servicesMap.putIfAbsent(service, new HashMap<>());
+                Map<String, Object> serviceData = servicesMap.get(service);
+
+                serviceData.put("logCount",
+                    ((Integer) serviceData.getOrDefault("logCount", 0)) + 1);
+
+                // Count errors
+                if ("ERROR".equals(log.getLevel())) {
+                    serviceData.put("errorCount",
+                        ((Integer) serviceData.getOrDefault("errorCount", 0)) + 1);
+                }
+            }
+        });
+
+        // Get traces per service
+        List<Trace> allTraces = dataStore.getRecentTraces(500);
+        allTraces.forEach(trace -> {
+            String service = trace.getServiceName();
+            if (service != null && !service.isEmpty()) {
+                servicesMap.putIfAbsent(service, new HashMap<>());
+                Map<String, Object> serviceData = servicesMap.get(service);
+
+                serviceData.put("traceCount",
+                    ((Integer) serviceData.getOrDefault("traceCount", 0)) + 1);
+            }
+        });
+
+        // Build service list with health status
+        List<Map<String, Object>> services = new ArrayList<>();
+        servicesMap.forEach((serviceName, data) -> {
+            long lastSeen = (long) data.getOrDefault("lastSeen", 0L);
+            long timeSinceLastSeen = System.currentTimeMillis() - lastSeen;
+
+            String status = "healthy";
+            if (timeSinceLastSeen > 300000) { // 5 minutes
+                status = "down";
+            } else if (timeSinceLastSeen > 60000) { // 1 minute
+                status = "degraded";
+            }
+
+            int errorCount = (int) data.getOrDefault("errorCount", 0);
+            int logCount = (int) data.getOrDefault("logCount", 0);
+            double errorRate = logCount > 0 ? (errorCount * 100.0 / logCount) : 0;
+
+            if (errorRate > 10) {
+                status = "degraded";
+            }
+
+            services.add(Map.of(
+                "name", serviceName,
+                "status", status,
+                "metricCount", data.getOrDefault("metricCount", 0),
+                "logCount", data.getOrDefault("logCount", 0),
+                "traceCount", data.getOrDefault("traceCount", 0),
+                "errorCount", errorCount,
+                "errorRate", errorRate,
+                "lastSeen", lastSeen
+            ));
+        });
+
+        // Sort by last seen (most recent first)
+        services.sort((a, b) -> Long.compare(
+            (long) b.get("lastSeen"),
+            (long) a.get("lastSeen")
+        ));
+
+        return Map.of(
+            "services", services,
+            "total", services.size(),
+            "healthy", services.stream().filter(s -> "healthy".equals(s.get("status"))).count(),
+            "degraded", services.stream().filter(s -> "degraded".equals(s.get("status"))).count(),
+            "down", services.stream().filter(s -> "down".equals(s.get("status"))).count()
+        );
+    }
 }

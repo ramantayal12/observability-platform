@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ObserveX - Dashboards</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/dashboards.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                    </svg>
+                </div>
+                <span class="logo-text">ObserveX</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span class="nav-text">Overview</span>
+            </a>
+
+            <a href="dashboards.html" class="nav-link active">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="11" y="2" width="7" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="11" y="8" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span class="nav-text">Dashboards</span>
+            </a>
+
+            <a href="metrics.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <path d="M3 15l4-4 3 3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M3 3v14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span class="nav-text">Metrics</span>
+            </a>
+
+            <a href="logs.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span class="nav-text">Logs</span>
+            </a>
+
+            <a href="traces.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <circle cx="5" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
+                    <circle cx="15" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M7 10h6" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span class="nav-text">Traces</span>
+            </a>
+
+            <div class="nav-divider"></div>
+
+            <a href="services.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="12" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="3" y="12" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="12" y="12" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <span class="nav-text">Services</span>
+            </a>
+
+            <a href="alerts.html" class="nav-link">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 2a6 6 0 016 6c0 7 3 9 3 9H1s3-2 3-9a6 6 0 016-6z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M9 17v1a2 2 0 104 0v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span class="nav-text">Alerts</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Dashboards</h1>
+            </div>
+
+            <div class="topbar-right">
+                <button class="btn btn-primary" id="newDashboardBtn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <line x1="8" y1="3" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    New Dashboard
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Dashboard List View -->
+            <div id="dashboardListView">
+                <div class="dashboards-grid" id="dashboardsGrid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="dashboardView" class="hidden">
+                <div class="dashboard-toolbar">
+                    <button class="btn btn-ghost btn-sm" id="backToDashboards">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        Back to Dashboards
+                    </button>
+                    
+                    <div class="dashboard-toolbar-right">
+                        <button class="btn btn-secondary btn-sm" id="addWidgetBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <line x1="7" y1="2" x2="7" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Add Widget
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="editDashboardBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M10 2l2 2-6 6H4V8l6-6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Edit
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="deleteDashboardBtn">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <div class="dashboard-canvas" id="dashboardCanvas">
+                    <!-- Widgets populated by JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Dashboard Modal -->
+    <div id="newDashboardModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Dashboard</h3>
+                <button class="icon-button-sm modal-close">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Dashboard Name</label>
+                    <input type="text" class="form-input" id="dashboardNameInput" placeholder="My Dashboard">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea class="form-input" id="dashboardDescInput" rows="3" placeholder="Describe what this dashboard monitors..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Cancel</button>
+                <button class="btn btn-primary" id="createDashboardBtn">Create Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Widget Modal -->
+    <div id="addWidgetModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Widget</h3>
+                <button class="icon-button-sm modal-close">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="widget-type-selector">
+                    <button class="widget-type-card" data-type="timeseries">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <path d="M4 24l6-6 4 4 10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span class="widget-type-name">Timeseries</span>
+                        <span class="widget-type-desc">Line chart over time</span>
+                    </button>
+                    <button class="widget-type-card" data-type="stat">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <rect x="4" y="4" width="24" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <text x="16" y="20" text-anchor="middle" fill="currentColor" font-size="12" font-weight="bold">42</text>
+                        </svg>
+                        <span class="widget-type-name">Stat</span>
+                        <span class="widget-type-desc">Single value display</span>
+                    </button>
+                    <button class="widget-type-card" data-type="table">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <rect x="4" y="4" width="24" height="24" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <line x1="4" y1="12" x2="28" y2="12" stroke="currentColor" stroke-width="2"/>
+                            <line x1="4" y1="20" x2="28" y2="20" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <span class="widget-type-name">Table</span>
+                        <span class="widget-type-desc">Tabular data view</span>
+                    </button>
+                </div>
+
+                <div id="widgetConfigForm" class="hidden">
+                    <div class="form-group">
+                        <label class="form-label">Widget Title</label>
+                        <input type="text" class="form-input" id="widgetTitleInput" placeholder="Widget Title">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Metric</label>
+                        <select class="form-input" id="widgetMetricSelect">
+                            <option value="api.latency">API Latency</option>
+                            <option value="service.latency">Service Latency</option>
+                            <option value="throughput">Throughput</option>
+                            <option value="error.rate">Error Rate</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Aggregation</label>
+                        <select class="form-input" id="widgetAggSelect">
+                            <option value="avg">Average</option>
+                            <option value="sum">Sum</option>
+                            <option value="min">Minimum</option>
+                            <option value="max">Maximum</option>
+                            <option value="p50">P50</option>
+                            <option value="p90">P90</option>
+                            <option value="p95">P95</option>
+                            <option value="p99">P99</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Cancel</button>
+                <button class="btn btn-primary" id="saveWidgetBtn" disabled>Add Widget</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="../config/constants.js"></script>
+    <script src="../core/EventBus.js"></script>
+    <script src="../core/StateManager.js"></script>
+    <script src="../services/MockDataService.js"></script>
+    <script src="../services/ApiService.js"></script>
+    <script src="../components/BaseComponent.js"></script>
+    <script src="../components/NotificationManager.js"></script>
+
+    <!-- Page Scripts -->
+    <script src="../assets/js/dashboards.js"></script>
+</body>
+</html>
+

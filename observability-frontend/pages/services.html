@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services - ObserveX</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="#774FF8"/>
+                    <path d="M16 8L22 16L16 24L10 16L16 8Z" fill="white"/>
+                </svg>
+                <span class="logo-text">ObserveX</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3L2 9h2v7h5v-5h2v5h5V9h2l-8-6z"/>
+                </svg>
+                <span>Overview</span>
+            </a>
+            <a href="dashboards.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 4h7v5H2V4zm9 0h7v5h-7V4zM2 11h7v5H2v-5zm9 0h7v5h-7v-5z"/>
+                </svg>
+                <span>Dashboards</span>
+            </a>
+            <a href="metrics.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 16l6-6 4 4 6-8v10H2z"/>
+                </svg>
+                <span>Metrics</span>
+            </a>
+            <a href="logs.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4h14v2H3V4zm0 4h14v2H3V8zm0 4h14v2H3v-2zm0 4h10v2H3v-2z"/>
+                </svg>
+                <span>Logs</span>
+            </a>
+            <a href="traces.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 3h14v2H3V3zm0 4h10v2H3V7zm0 4h14v2H3v-2zm0 4h10v2H3v-2z"/>
+                </svg>
+                <span>Traces</span>
+            </a>
+            <a href="services.html" class="nav-link active">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12z"/>
+                </svg>
+                <span>Services</span>
+            </a>
+            <a href="alerts.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a2 2 0 00-2 2v1.17A5 5 0 005 10v4l-2 2v1h14v-1l-2-2v-4a5 5 0 00-3-4.58V4a2 2 0 00-2-2z"/>
+                </svg>
+                <span>Alerts</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Services</h1>
+            </div>
+            <div class="topbar-right">
+                <!-- Auto Refresh -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Services</span>
+                    </div>
+                    <div class="stat-value" id="totalServices">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Healthy</span>
+                    </div>
+                    <div class="stat-value stat-success" id="healthyServices">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Degraded</span>
+                    </div>
+                    <div class="stat-value stat-warning" id="degradedServices">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Down</span>
+                    </div>
+                    <div class="stat-value stat-error" id="downServices">--</div>
+                </div>
+            </div>
+
+            <!-- Services Grid -->
+            <div class="services-grid" id="servicesGrid">
+                <div class="text-center" style="grid-column: 1/-1; padding: 48px;">
+                    Loading services...
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Core Scripts -->
+    <script src="../config/constants.js"></script>
+    <script src="../core/EventBus.js"></script>
+    <script src="../core/StateManager.js"></script>
+    <script src="../services/MockDataService.js"></script>
+    <script src="../services/ApiService.js"></script>
+    <script src="../components/BaseComponent.js"></script>
+    <script src="../components/NotificationManager.js"></script>
+    
+    <!-- Page Scripts -->
+    <script src="../assets/js/services.js"></script>
+</body>
+</html>
+

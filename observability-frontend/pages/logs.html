@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs - ObserveX</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="#774FF8"/>
+                    <path d="M16 8L22 16L16 24L10 16L16 8Z" fill="white"/>
+                </svg>
+                <span class="logo-text">ObserveX</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 3L2 9h2v7h5v-5h2v5h5V9h2l-8-6z"/>
+                </svg>
+                <span>Overview</span>
+            </a>
+            <a href="dashboards.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 4h7v5H2V4zm9 0h7v5h-7V4zM2 11h7v5H2v-5zm9 0h7v5h-7v-5z"/>
+                </svg>
+                <span>Dashboards</span>
+            </a>
+            <a href="metrics.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 16l6-6 4 4 6-8v10H2z"/>
+                </svg>
+                <span>Metrics</span>
+            </a>
+            <a href="logs.html" class="nav-link active">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4h14v2H3V4zm0 4h14v2H3V8zm0 4h14v2H3v-2zm0 4h10v2H3v-2z"/>
+                </svg>
+                <span>Logs</span>
+            </a>
+            <a href="traces.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 3h14v2H3V3zm0 4h10v2H3V7zm0 4h14v2H3v-2zm0 4h10v2H3v-2z"/>
+                </svg>
+                <span>Traces</span>
+            </a>
+            <a href="services.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12z"/>
+                </svg>
+                <span>Services</span>
+            </a>
+            <a href="alerts.html" class="nav-link">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a2 2 0 00-2 2v1.17A5 5 0 005 10v4l-2 2v1h14v-1l-2-2v-4a5 5 0 00-3-4.58V4a2 2 0 00-2-2z"/>
+                </svg>
+                <span>Alerts</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Logs</h1>
+            </div>
+            <div class="topbar-right">
+                <!-- Time Picker -->
+                <div class="time-picker">
+                    <button class="btn btn-secondary btn-sm" id="timePickerBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 11a5 5 0 110-10 5 5 0 010 10zm.5-8H7.5v4l3.5 2 .5-1-3-1.5V5z"/>
+                        </svg>
+                        <span id="timePickerLabel">Last 1 hour</span>
+                    </button>
+                    <div class="time-picker-dropdown" id="timePickerDropdown">
+                        <button class="time-option" data-range="900000">Last 15 minutes</button>
+                        <button class="time-option" data-range="3600000">Last 1 hour</button>
+                        <button class="time-option" data-range="21600000">Last 6 hours</button>
+                        <button class="time-option" data-range="86400000">Last 24 hours</button>
+                        <button class="time-option" data-range="604800000">Last 7 days</button>
+                    </div>
+                </div>
+
+                <!-- Auto Refresh -->
+                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Auto Refresh">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="form-group">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-input" id="searchInput" placeholder="Search logs...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Service</label>
+                    <select class="form-input" id="serviceFilter">
+                        <option value="">All Services</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Level</label>
+                    <select class="form-input" id="levelFilter">
+                        <option value="">All Levels</option>
+                        <option value="ERROR">ERROR</option>
+                        <option value="WARN">WARN</option>
+                        <option value="INFO">INFO</option>
+                        <option value="DEBUG">DEBUG</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" id="applyFiltersBtn">Apply Filters</button>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Logs</span>
+                    </div>
+                    <div class="stat-value" id="totalLogs">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Errors</span>
+                    </div>
+                    <div class="stat-value" id="errorCount">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Warnings</span>
+                    </div>
+                    <div class="stat-value" id="warnCount">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Info</span>
+                    </div>
+                    <div class="stat-value" id="infoCount">--</div>
+                </div>
+            </div>
+
+            <!-- Logs List -->
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Log Stream</h3>
+                    <div class="chart-actions">
+                        <button class="btn btn-secondary btn-sm" id="clearLogsBtn">Clear</button>
+                        <button class="btn btn-secondary btn-sm" id="exportLogsBtn">Export</button>
+                    </div>
+                </div>
+                <div class="logs-container" id="logsContainer">
+                    <div class="logs-loading">Loading logs...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Core Scripts -->
+    <script src="../config/constants.js"></script>
+    <script src="../core/EventBus.js"></script>
+    <script src="../core/StateManager.js"></script>
+    <script src="../services/MockDataService.js"></script>
+    <script src="../services/ApiService.js"></script>
+    <script src="../components/BaseComponent.js"></script>
+    <script src="../components/NotificationManager.js"></script>
+    
+    <!-- Page Scripts -->
+    <script src="../assets/js/logs.js"></script>
+</body>
+</html>
+
