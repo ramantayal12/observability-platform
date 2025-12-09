@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observability Dashboard</title>
+    <meta name="description" content="Real-time observability dashboard for monitoring service metrics, logs, and traces">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1 class="dashboard-title">
+                    <span class="pulse-dot"></span>
+                    Observability Dashboard
+                </h1>
+                <div class="header-controls">
+                    <select id="serviceFilter" class="control-select">
+                        <option value="">All Services</option>
+                    </select>
+                    <select id="timeRange" class="control-select">
+                        <option value="300000">Last 5 min</option>
+                        <option value="900000">Last 15 min</option>
+                        <option value="1800000">Last 30 min</option>
+                        <option value="3600000" selected>Last 1 hour</option>
+                        <option value="21600000">Last 6 hours</option>
+                    </select>
+                    <button id="refreshBtn" class="btn-refresh">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C9.84869 2 11.5 2.84 12.6 4.2M12.6 4.2V2M12.6 4.2H10.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <!-- Stats Cards -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-primary">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Avg API Latency</p>
+                        <p class="stat-value" id="avgApiLatency">--</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-success">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Avg Service Latency</p>
+                        <p class="stat-value" id="avgServiceLatency">--</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-warning">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M14.5 3l7 12H1l7-12h6.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="1" fill="currentColor"/>
+                            <path d="M12 9v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Total Errors</p>
+                        <p class="stat-value" id="totalErrors">--</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-info">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 4h16v16H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <path d="M9 9h6M9 13h6M9 17h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Active Traces</p>
+                        <p class="stat-value" id="activeTraces">--</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h2 class="chart-title">API Latency</h2>
+                        <span class="chart-subtitle">Response time per endpoint</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="apiLatencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h2 class="chart-title">Service Latency</h2>
+                        <span class="chart-subtitle">Internal operation timing</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="serviceLatencyChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tabs Section -->
+            <section class="tabs-section">
+                <div class="tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-button active" data-tab="logs">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 4h12M2 8h12M2 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Logs
+                        </button>
+                        <button class="tab-button" data-tab="traces">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 8h12M8 2v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            Traces
+                        </button>
+                    </div>
+
+                    <div id="logsTab" class="tab-content active">
+                        <div class="logs-controls">
+                            <input type="text" id="logSearch" class="search-input" placeholder="Search logs...">
+                            <select id="logLevelFilter" class="control-select">
+                                <option value="">All Levels</option>
+                                <option value="ERROR">ERROR</option>
+                                <option value="WARN">WARN</option>
+                                <option value="INFO">INFO</option>
+                                <option value="DEBUG">DEBUG</option>
+                            </select>
+                        </div>
+                        <div id="logsContainer" class="logs-container">
+                            <p class="empty-state">No logs available</p>
+                        </div>
+                    </div>
+
+                    <div id="tracesTab" class="tab-content">
+                        <div id="tracesContainer" class="traces-container">
+                            <p class="empty-state">No traces available</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

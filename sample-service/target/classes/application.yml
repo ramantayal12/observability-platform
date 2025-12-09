@@ -1,0 +1,17 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: sample-service
+
+# Observability Configuration
+observability:
+  backend-url: http://localhost:8080
+  service-name: sample-service
+  api-key: demo-api-key-12345
+
+logging:
+  level:
+    com.sample: INFO
+    com.observability: INFO
