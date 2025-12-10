@@ -8,7 +8,7 @@ const AppConfig = {
     API: {
         BASE_URL: 'http://localhost:8080/api',
         // Use mock endpoints from backend (set to 'real' to use actual telemetry data)
-        MODE: 'mock', // 'mock' or 'real'
+        MODE: 'real', // 'mock' or 'real'
         ENDPOINTS: {
             // Mock endpoints (generated data from backend)
             MOCK: {

@@ -32,11 +32,11 @@ public class TraceService {
         // Find or create trace
         TraceEntity trace = traceRepository.findByTraceId(span.getTraceId())
                 .orElseGet(() -> createTrace(span));
-        
-        // Create span entity
-        SpanEntity spanEntity = toSpanEntity(span, trace);
+
+        // Create span entity (no relationship to trace - NoSQL friendly)
+        SpanEntity spanEntity = toSpanEntity(span);
         spanRepository.save(spanEntity);
-        
+
         // Update trace timing
         updateTraceTiming(trace, span);
     }
@@ -55,9 +55,9 @@ public class TraceService {
             TraceEntity trace = traceRepository.findByTraceId(traceId)
                     .orElseGet(() -> createTrace(traceSpans.get(0)));
             
-            // Save all spans
+            // Save all spans (no relationship to trace - NoSQL friendly)
             List<SpanEntity> spanEntities = traceSpans.stream()
-                    .map(s -> toSpanEntity(s, trace))
+                    .map(this::toSpanEntity)
                     .collect(Collectors.toList());
             spanRepository.saveAll(spanEntities);
             
@@ -145,7 +145,7 @@ public class TraceService {
         }
     }
 
-    private SpanEntity toSpanEntity(Span span, TraceEntity trace) {
+    private SpanEntity toSpanEntity(Span span) {
         String attributesJson = null;
         if (span.getAttributes() != null) {
             try {
@@ -154,7 +154,7 @@ public class TraceService {
                 log.warn("Failed to serialize span attributes", e);
             }
         }
-        
+
         return SpanEntity.builder()
                 .spanId(span.getSpanId())
                 .traceId(span.getTraceId())
@@ -170,7 +170,6 @@ public class TraceService {
                 .container(span.getContainer())
                 .node(span.getNode())
                 .attributes(attributesJson)
-                .trace(trace)
                 .build();
     }
 

@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "traces", indexes = {
@@ -45,9 +43,5 @@ public class TraceEntity {
     private String rootOperation;
 
     private Integer spanCount;
-
-    @OneToMany(mappedBy = "trace", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<SpanEntity> spans = new ArrayList<>();
 }
 

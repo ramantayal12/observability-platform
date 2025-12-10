@@ -63,9 +63,5 @@ public class SpanEntity {
 
     @Column(columnDefinition = "JSON")
     private String attributes;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "trace_entity_id")
-    private TraceEntity trace;
 }
 

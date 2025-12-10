@@ -6,7 +6,7 @@ spring:
     name: observability-backend
 
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:h2}
+    active: ${SPRING_PROFILES_ACTIVE:mysql}
 
   # JPA Configuration
   jpa:
@@ -58,11 +58,13 @@ spring:
     activate:
       on-profile: mysql
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:observability}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:metabase}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${MYSQL_USERNAME:observability}
-    password: ${MYSQL_PASSWORD:observability}
+    username: ${MYSQL_USERNAME:metabase}
+    password: ${MYSQL_PASSWORD:metabasepass}
   jpa:
+    hibernate:
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
