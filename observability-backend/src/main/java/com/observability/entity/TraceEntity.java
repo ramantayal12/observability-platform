@@ -7,6 +7,8 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "traces", indexes = {
+    @Index(name = "idx_traces_org", columnList = "organization_id"),
+    @Index(name = "idx_traces_team", columnList = "team_id"),
     @Index(name = "idx_traces_trace_id", columnList = "traceId", unique = true),
     @Index(name = "idx_traces_service", columnList = "serviceName"),
     @Index(name = "idx_traces_start_time", columnList = "startTime")
@@ -20,6 +22,12 @@ public class TraceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "organization_id", nullable = false)
+    private Long organizationId;
+
+    @Column(name = "team_id", nullable = false)
+    private Long teamId;
 
     @Column(nullable = false, length = 32, unique = true)
     private String traceId;

@@ -23,6 +23,7 @@
     let dashboards = [];
     let currentDashboard = null;
     let currentView = 'list'; // 'list' or 'dashboard'
+    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -34,15 +35,41 @@
         loadDashboards();
 
         // Setup UI
+        setupTeamSelector();
         setupNewDashboardButton();
         setupBackButton();
         setupDashboardActions();
         setupModals();
         setupRefreshButtons();
 
+        // Listen for team changes
+        if (window.eventBus) {
+            eventBus.on('team:changed', handleTeamChange);
+        }
+
         // Render dashboards list
         renderDashboardsList();
         showListView();
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Dashboards] Team changed:', team);
+        loadDashboards();
+        renderDashboardsList();
     }
 
     /**

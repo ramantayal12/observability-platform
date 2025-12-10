@@ -57,5 +57,28 @@ public interface TraceRepository extends JpaRepository<TraceEntity, Long> {
             @Param("end") Instant end);
 
     void deleteByStartTimeBefore(Instant timestamp);
+
+    // Team-based queries
+    @Query("SELECT t FROM TraceEntity t WHERE t.teamId = :teamId AND " +
+           "t.startTime BETWEEN :start AND :end " +
+           "ORDER BY t.startTime DESC")
+    List<TraceEntity> findByTeamIdAndStartTimeBetween(
+            @Param("teamId") Long teamId,
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            Pageable pageable);
+
+    @Query("SELECT t FROM TraceEntity t WHERE t.teamId = :teamId AND " +
+           "(:serviceName IS NULL OR t.serviceName = :serviceName) AND " +
+           "(:status IS NULL OR t.status = :status) AND " +
+           "t.startTime BETWEEN :start AND :end " +
+           "ORDER BY t.startTime DESC")
+    List<TraceEntity> findByTeamIdAndFilters(
+            @Param("teamId") Long teamId,
+            @Param("serviceName") String serviceName,
+            @Param("status") String status,
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            Pageable pageable);
 }
 

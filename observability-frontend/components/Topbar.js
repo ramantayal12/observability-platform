@@ -1,6 +1,6 @@
 /**
  * Topbar Component
- * Reusable topbar with title, time picker, and action buttons
+ * Reusable topbar with title, time picker, team selector, and action buttons
  */
 class Topbar {
     constructor(options = {}) {
@@ -8,12 +8,15 @@ class Topbar {
         this.container = options.container || null;
         this.showTimePicker = options.showTimePicker !== false; // Default true
         this.showAutoRefresh = options.showAutoRefresh !== false; // Default true
+        this.showTeamSelector = options.showTeamSelector !== false; // Default true
         this.customActions = options.customActions || []; // Array of custom action buttons
         this.onRefresh = options.onRefresh || null;
-        
+        this.onTeamChange = options.onTeamChange || null;
+
         this.timeRangePicker = null;
+        this.teamSelector = null;
         this.autoRefreshInterval = null;
-        
+
         this.init();
     }
     
@@ -26,6 +29,7 @@ class Topbar {
         const topbarHTML = `
             <header class="topbar" id="appTopbar">
                 <div class="topbar-left">
+                    ${this.renderTeamSelector()}
                     <h1 class="page-title">${this.title}</h1>
                 </div>
                 <div class="topbar-right">
@@ -35,7 +39,7 @@ class Topbar {
                 </div>
             </header>
         `;
-        
+
         if (this.container) {
             this.container.insertAdjacentHTML('afterbegin', topbarHTML);
         } else {
@@ -44,6 +48,11 @@ class Topbar {
                 mainContent.insertAdjacentHTML('afterbegin', topbarHTML);
             }
         }
+    }
+
+    renderTeamSelector() {
+        if (!this.showTeamSelector) return '';
+        return '<div id="teamSelectorContainer"></div>';
     }
     
     renderTimePicker() {
@@ -96,6 +105,22 @@ class Topbar {
     }
     
     setupComponents() {
+        // Setup TeamSelector if enabled
+        if (this.showTeamSelector && window.TeamSelector) {
+            this.teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer',
+                onTeamChange: (team) => {
+                    if (this.onTeamChange) {
+                        this.onTeamChange(team);
+                    }
+                    // Trigger refresh when team changes
+                    if (this.onRefresh) {
+                        this.onRefresh();
+                    }
+                }
+            });
+        }
+
         // Setup TimeRangePicker if enabled
         if (this.showTimePicker && window.TimeRangePicker) {
             this.timeRangePicker = new TimeRangePicker({
@@ -104,12 +129,12 @@ class Topbar {
                 labelId: 'timePickerLabel'
             });
         }
-        
+
         // Setup Auto Refresh if enabled
         if (this.showAutoRefresh) {
             this.setupAutoRefresh();
         }
-        
+
         // Attach custom action listeners
         this.attachCustomActionListeners();
     }
@@ -179,7 +204,15 @@ class Topbar {
     getTimeRangePicker() {
         return this.timeRangePicker;
     }
-    
+
+    getTeamSelector() {
+        return this.teamSelector;
+    }
+
+    getCurrentTeamId() {
+        return this.teamSelector?.getTeamId() || null;
+    }
+
     destroy() {
         this.stopAutoRefresh();
         const topbar = document.getElementById('appTopbar');

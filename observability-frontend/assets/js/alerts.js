@@ -33,6 +33,7 @@
     let timeRangePicker = null;
     let currentTab = 'incidents';
     let selectedIncidentId = null;
+    let teamSelector = null;
 
     // FacetFilter instances
     let stateFacet = null;
@@ -48,6 +49,7 @@
         console.log('Initializing Alerts page (New Relic style)...');
 
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupTabs();
@@ -57,7 +59,29 @@
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
 
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
+
         // Load initial data
+        loadAlerts();
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Alerts] Team changed:', team);
         loadAlerts();
     }
 
@@ -255,9 +279,124 @@
     }
 
     /**
-     * Load alerts
+     * Load alerts from backend API
      */
-    function loadAlerts() {
+    async function loadAlerts() {
+        try {
+            // Get time range
+            const endTime = Date.now();
+            const startTime = endTime - currentTimeRange;
+
+            // Get current team from state or localStorage
+            let teamId = null;
+            if (window.stateManager) {
+                const currentTeam = stateManager.get('currentTeam');
+                teamId = currentTeam?.id;
+            }
+            if (!teamId) {
+                const cached = localStorage.getItem('observability_current_team');
+                if (cached) {
+                    teamId = JSON.parse(cached).id;
+                }
+            }
+
+            // Default to team 1 if no team selected
+            if (!teamId) {
+                teamId = 1;
+            }
+
+            // Fetch alerts from team-specific backend endpoint
+            const apiService = window.apiService || ApiService.getInstance();
+            const response = await apiService.fetchTeamAlerts(teamId);
+
+            // Transform backend alerts to incidents format
+            const alertsData = response.data?.alerts || response.alerts || [];
+            incidents = alertsData.map(alert => ({
+                id: `inc-${alert.id}`,
+                policyId: alert.id,
+                policyName: alert.name,
+                title: alert.name,
+                description: alert.description || `${alert.metric} ${alert.operator} ${alert.threshold}`,
+                priority: alert.severity === 'critical' ? 'critical' :
+                          alert.severity === 'warning' ? 'high' : 'medium',
+                state: alert.status === 'active' ? 'open' :
+                       alert.status === 'acknowledged' ? 'acknowledged' : 'closed',
+                source: alert.serviceName || 'unknown',
+                pod: generatePodName(alert.serviceName),
+                container: alert.serviceName || 'main',
+                openedAt: alert.triggeredAt || alert.createdAt,
+                acknowledgedAt: alert.acknowledgedAt,
+                closedAt: alert.resolvedAt,
+                duration: alert.resolvedAt ?
+                    (alert.resolvedAt - (alert.triggeredAt || alert.createdAt)) :
+                    (Date.now() - (alert.triggeredAt || alert.createdAt)),
+                traceId: generateHexId(32),
+                spans: generateRelatedSpans(alert.serviceName || 'api-gateway', 3),
+                currentValue: alert.currentValue,
+                threshold: alert.threshold,
+                metric: alert.metric,
+                type: alert.type
+            }));
+
+            // Build policies from alerts
+            alertPolicies = buildPoliciesFromAlerts(alertsData);
+
+            // Apply filters and render
+            applyFilters();
+            renderPolicies();
+
+        } catch (error) {
+            console.error('Error loading alerts:', error);
+            notificationManager.error('Failed to load alerts');
+
+            // Fallback to local data
+            loadLocalAlerts();
+        }
+    }
+
+    /**
+     * Generate pod name from service name
+     */
+    function generatePodName(serviceName) {
+        if (!serviceName) return 'unknown-pod';
+        const suffix = generateHexId(5);
+        return `${serviceName}-${suffix}`;
+    }
+
+    /**
+     * Build policies from alerts
+     */
+    function buildPoliciesFromAlerts(alerts) {
+        const policyMap = new Map();
+
+        alerts.forEach(alert => {
+            const key = `${alert.name}-${alert.metric}`;
+            if (!policyMap.has(key)) {
+                policyMap.set(key, {
+                    id: String(alert.id),
+                    name: alert.name,
+                    metric: alert.metric || 'unknown',
+                    operator: alert.operator || '>',
+                    threshold: alert.threshold || 0,
+                    severity: alert.severity,
+                    service: alert.serviceName || 'All',
+                    status: alert.status === 'muted' ? 'muted' : 'active',
+                    lastTriggered: alert.triggeredAt ? new Date(alert.triggeredAt).getTime() : null,
+                    createdAt: alert.createdAt ? new Date(alert.createdAt).getTime() : Date.now(),
+                    incidentCount: 1
+                });
+            } else {
+                policyMap.get(key).incidentCount++;
+            }
+        });
+
+        return Array.from(policyMap.values());
+    }
+
+    /**
+     * Fallback to local mock data
+     */
+    function loadLocalAlerts() {
         // Load policies from localStorage
         const savedPolicies = localStorage.getItem('observability_alert_policies');
         if (savedPolicies) {

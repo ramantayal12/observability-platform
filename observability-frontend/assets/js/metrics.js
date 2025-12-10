@@ -28,6 +28,7 @@
     };
     let autoRefreshInterval = null;
     let timeRangePicker = null;
+    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -36,6 +37,7 @@
         console.log('Initializing Metrics page...');
 
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupFilters();
@@ -43,6 +45,9 @@
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
 
         // Load initial data
         await loadMetrics();
@@ -52,6 +57,28 @@
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Metrics] Team changed:', team);
+        // Clear existing charts so they get re-initialized with new team's config
+        Object.values(charts).forEach(chart => chart && chart.destroy && chart.destroy());
+        charts = {};
+        loadMetrics();
     }
 
     /**
@@ -159,7 +186,8 @@
             const endTime = Date.now();
             const startTime = endTime - currentFilters.timeRange;
 
-            const data = await apiService.fetchMetrics({
+            // Use team-specific endpoint
+            const data = await apiService.fetchTeamMetrics({
                 serviceName: currentFilters.service || undefined,
                 startTime,
                 endTime
@@ -168,14 +196,8 @@
             // Update stats
             updateStats(data);
 
-            // Update charts
+            // Update API metrics table
             updateCharts(data);
-
-            // Update table
-            updateTable(data);
-
-            // Load API details
-            await loadApiDetails();
 
             // Update service filter options
             updateServiceFilter(data);
@@ -190,30 +212,49 @@
      * Update stats cards
      */
     function updateStats(data) {
-        const metrics = data.metrics || {};
-        const statistics = data.statistics || {};
+        // Handle new apiMetrics format
+        const apiMetrics = data.apiMetrics || [];
 
-        // Calculate stats
         let avgLatency = 0;
         let p95Latency = 0;
         let throughput = 0;
         let errorRate = 0;
 
-        // API Latency
-        if (statistics['api.latency']) {
-            avgLatency = statistics['api.latency'].avg || 0;
-            const latencyData = statistics['api.latency'].data || [];
-            p95Latency = calculatePercentile(latencyData.map(m => m.value), 95);
-        }
+        if (apiMetrics.length > 0) {
+            // Calculate from apiMetrics
+            let totalLatency = 0;
+            let totalThroughput = 0;
+            let totalErrorRate = 0;
+            let allLatencyValues = [];
 
-        // Throughput
-        if (statistics['throughput']) {
-            throughput = statistics['throughput'].avg || 0;
-        }
+            apiMetrics.forEach(metric => {
+                totalLatency += metric.avgLatency || 0;
+                totalThroughput += metric.throughput || 0;
+                totalErrorRate += metric.errorRate || 0;
 
-        // Error Rate
-        if (statistics['error.rate']) {
-            errorRate = statistics['error.rate'].avg || 0;
+                if (metric.latencyData) {
+                    allLatencyValues.push(...metric.latencyData.map(d => d.value));
+                }
+            });
+
+            avgLatency = totalLatency / apiMetrics.length;
+            throughput = totalThroughput;
+            errorRate = totalErrorRate / apiMetrics.length;
+            p95Latency = calculatePercentile(allLatencyValues, 95);
+        } else {
+            // Legacy format
+            const statistics = data.statistics || {};
+            if (statistics['api.latency']) {
+                avgLatency = statistics['api.latency'].avg || 0;
+                const latencyData = statistics['api.latency'].data || [];
+                p95Latency = calculatePercentile(latencyData.map(m => m.value), 95);
+            }
+            if (statistics['throughput']) {
+                throughput = statistics['throughput'].avg || 0;
+            }
+            if (statistics['error.rate']) {
+                errorRate = statistics['error.rate'].avg || 0;
+            }
         }
 
         // Update DOM
@@ -224,450 +265,191 @@
     }
 
     /**
-     * Initialize interactive charts
+     * Initialize interactive charts - charts will be created dynamically based on backend config
      */
     function initializeCharts() {
         if (typeof InteractiveChart === 'undefined') {
             console.warn('[Metrics] InteractiveChart not available');
             return;
         }
-
-        // Latency Chart - multiple API endpoints
-        charts.latency = new InteractiveChart({
-            containerId: 'latencyChartContainer',
-            unit: 'ms',
-            height: 250,
-            showLegend: true
-        });
-
-        // P50 Latency Chart
-        charts.p50 = new InteractiveChart({
-            containerId: 'p50ChartContainer',
-            unit: 'ms',
-            height: 250,
-            showLegend: true
-        });
-
-        // P90 Latency Chart
-        charts.p90 = new InteractiveChart({
-            containerId: 'p90ChartContainer',
-            unit: 'ms',
-            height: 250,
-            showLegend: true
-        });
-
-        // P99 Latency Chart
-        charts.p99 = new InteractiveChart({
-            containerId: 'p99ChartContainer',
-            unit: 'ms',
-            height: 250,
-            showLegend: true
-        });
-
-        // Throughput Chart - multiple services
-        charts.throughput = new InteractiveChart({
-            containerId: 'throughputChartContainer',
-            unit: 'req/min',
-            height: 250,
-            showLegend: true
-        });
-
-        // Error Rate Chart - multiple services
-        charts.errorRate = new InteractiveChart({
-            containerId: 'errorRateChartContainer',
-            unit: '%',
-            height: 250,
-            showLegend: true
-        });
-
-        // CPU Usage Chart
-        charts.cpu = new InteractiveChart({
-            containerId: 'cpuChartContainer',
-            unit: '%',
-            height: 250,
-            showLegend: true
-        });
-
-        // Memory Usage Chart
-        charts.memory = new InteractiveChart({
-            containerId: 'memoryChartContainer',
-            unit: 'MB',
-            height: 250,
-            showLegend: true
-        });
-
-        // Service Metrics Chart - bar chart
-        charts.serviceMetrics = new InteractiveChart({
-            containerId: 'serviceMetricsChartContainer',
-            chartType: 'bar',
-            unit: '',
-            height: 250,
-            showLegend: true,
-            fill: false
-        });
-
-        // Status Codes Chart - bar chart
-        charts.statusCodes = new InteractiveChart({
-            containerId: 'statusCodesChartContainer',
-            chartType: 'bar',
-            unit: '',
-            height: 250,
-            showLegend: true,
-            fill: false
-        });
-
-        // Pod CPU Usage Chart
-        charts.podCpu = new InteractiveChart({
-            containerId: 'podCpuChartContainer',
-            unit: '%',
-            height: 250,
-            showLegend: true
-        });
-
-        // Pod Memory Usage Chart
-        charts.podMemory = new InteractiveChart({
-            containerId: 'podMemoryChartContainer',
-            unit: 'MB',
-            height: 250,
-            showLegend: true
-        });
-
-        // Container CPU Usage Chart
-        charts.containerCpu = new InteractiveChart({
-            containerId: 'containerCpuChartContainer',
-            unit: '%',
-            height: 250,
-            showLegend: true
-        });
-
-        // Container Memory Usage Chart
-        charts.containerMemory = new InteractiveChart({
-            containerId: 'containerMemoryChartContainer',
-            unit: 'MB',
-            height: 250,
-            showLegend: true
-        });
+        // Charts will be created dynamically when data is received
+        console.log('[Metrics] Charts will be initialized from backend config');
     }
 
     /**
-     * Update charts
+     * Initialize charts from backend configuration
+     */
+    function initializeChartsFromConfig(chartConfigs) {
+        if (!chartConfigs || chartConfigs.length === 0) {
+            console.warn('[Metrics] No chart configuration received from backend');
+            return;
+        }
+
+        const chartsGrid = document.querySelector('.charts-grid');
+        if (!chartsGrid) return;
+
+        // Clear existing chart cards and create new ones based on config
+        chartsGrid.innerHTML = '';
+
+        chartConfigs.forEach(config => {
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.innerHTML = `
+                <div class="chart-header">
+                    <h3 class="chart-title">${config.title}</h3>
+                </div>
+                <div class="chart-body" id="${config.id}ChartContainer"></div>
+            `;
+            chartsGrid.appendChild(chartCard);
+
+            // Create the chart instance
+            charts[config.id] = new InteractiveChart({
+                containerId: `${config.id}ChartContainer`,
+                chartType: config.type || 'line',
+                unit: config.unit || '',
+                height: 250,
+                showLegend: true
+            });
+        });
+
+        console.log('[Metrics] Charts initialized from backend config:', Object.keys(charts));
+    }
+
+    /**
+     * Update charts and API endpoints list
      */
     function updateCharts(data) {
-        const metrics = data.metrics || {};
+        console.log('[Metrics] Updating charts and API endpoints with data:', data);
 
-        // Latency Chart - show by endpoint
-        updateLatencyChart(metrics['api.latency'] || []);
+        // Initialize charts from backend config if not already done
+        if (data.charts && Object.keys(charts).length === 0) {
+            initializeChartsFromConfig(data.charts);
+        }
 
-        // Separate Percentile Charts
-        updatePercentileCharts(metrics['api.latency'] || []);
+        // Render API endpoints list (linear)
+        renderApiEndpointsList(data);
 
-        // Throughput Chart - show by service
-        updateThroughputChart(metrics['throughput'] || []);
-
-        // Error Rate Chart - show by service
-        updateErrorRateChart(metrics['error.rate'] || []);
-
-        // CPU Usage Chart
-        updateCpuChart(data);
-
-        // Memory Usage Chart
-        updateMemoryChart(data);
-
-        // Service Metrics Chart
-        updateServiceMetricsChart(data);
-
-        // Status Codes Chart
-        updateStatusCodesChart(data);
-
-        // Pod Level Charts
-        updatePodCharts(data);
-
-        // Container Level Charts
-        updateContainerCharts(data);
+        // Update interactive charts using backend config
+        updateInteractiveCharts(data);
     }
 
     /**
-     * Update latency chart with multi-series data
+     * Render API endpoints list (linear scrollable)
      */
-    function updateLatencyChart(data) {
-        if (!charts.latency) return;
+    function renderApiEndpointsList(data) {
+        const listEl = document.getElementById('apiEndpointsList');
+        const countEl = document.getElementById('apiEndpointCount');
 
-        // Group data by endpoint/service for multi-line display
-        const seriesData = groupDataBySeries(data, 'endpoint');
-        charts.latency.setData(seriesData);
+        if (!listEl) return;
+
+        const apiMetrics = data.apiMetrics || [];
+
+        if (countEl) {
+            countEl.textContent = `${apiMetrics.length} endpoints`;
+        }
+
+        if (apiMetrics.length === 0) {
+            listEl.innerHTML = '<div class="api-loading">No API endpoints found</div>';
+            return;
+        }
+
+        // Render endpoint items
+        listEl.innerHTML = apiMetrics.map(metric => {
+            const { method, path } = parseEndpoint(metric.endpoint);
+            const latencyValues = metric.latencyData ? metric.latencyData.map(d => d.value) : [];
+            const p50 = calculatePercentile(latencyValues, 50);
+            const p90 = calculatePercentile(latencyValues, 90);
+            const p99 = calculatePercentile(latencyValues, 99);
+
+            return `
+                <div class="api-endpoint-item">
+                    <div class="api-endpoint-info">
+                        <span class="api-method ${method.toLowerCase()}">${method}</span>
+                        <span class="api-path">${path}</span>
+                    </div>
+                    <div class="api-endpoint-stats">
+                        <div class="api-stat">
+                            <span class="api-stat-value latency">${(metric.avgLatency || 0).toFixed(1)} ms</span>
+                            <span class="api-stat-label">Avg</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-stat-value latency">${p50.toFixed(1)} ms</span>
+                            <span class="api-stat-label">P50</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-stat-value latency">${p90.toFixed(1)} ms</span>
+                            <span class="api-stat-label">P90</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-stat-value latency">${p99.toFixed(1)} ms</span>
+                            <span class="api-stat-label">P99</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-stat-value throughput">${(metric.throughput || 0).toFixed(0)} req/m</span>
+                            <span class="api-stat-label">Throughput</span>
+                        </div>
+                        <div class="api-stat">
+                            <span class="api-stat-value error">${(metric.errorRate || 0).toFixed(2)}%</span>
+                            <span class="api-stat-label">Error</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     /**
-     * Update separate percentile charts (P50, P90 by endpoint, P99 by operation type)
+     * Update interactive charts with data based on backend config
      */
-    function updatePercentileCharts(data) {
-        if (!charts.p50 && !charts.p90 && !charts.p99) return;
+    function updateInteractiveCharts(data) {
+        const apiMetrics = data.apiMetrics || [];
+        const chartConfigs = data.charts || [];
 
-        const now = Date.now();
-        const timeRange = currentFilters.timeRange;
-        const dataPoints = 60;
-        const interval = timeRange / dataPoints;
+        // Prepare data for each chart based on its config
+        chartConfigs.forEach(config => {
+            const chart = charts[config.id];
+            if (!chart) return;
 
-        // Endpoints for P50 and P90
-        const endpoints = [
-            { name: 'GET /api/v1/metrics', baseLatency: 45 },
-            { name: 'POST /api/v1/logs', baseLatency: 65 },
-            { name: 'GET /api/v1/traces', baseLatency: 55 },
-            { name: 'GET /api/v1/services', baseLatency: 35 }
-        ];
+            const chartData = {};
 
-        // Operation types for P99
-        const operations = [
-            { name: 'HTTP GET', baseLatency: 40 },
-            { name: 'HTTP POST', baseLatency: 70 },
-            { name: 'HTTP PUT', baseLatency: 55 },
-            { name: 'HTTP DELETE', baseLatency: 45 },
-            { name: 'Database Query', baseLatency: 85 },
-            { name: 'Cache Lookup', baseLatency: 15 }
-        ];
+            apiMetrics.forEach(metric => {
+                const endpoint = metric.endpoint || 'Unknown';
+                let seriesData = [];
 
-        const p50Data = {};
-        const p90Data = {};
-        const p99Data = {};
+                // Map dataKey to the correct data array
+                if (config.dataKey === 'latencyData' && metric.latencyData) {
+                    if (config.percentile) {
+                        // Apply percentile multiplier for P99 approximation
+                        const multiplier = config.percentile === 99 ? 2.2 : config.percentile === 90 ? 1.8 : 1.5;
+                        seriesData = metric.latencyData.map(d => ({ x: d.timestamp, y: d.value * multiplier }));
+                    } else {
+                        seriesData = metric.latencyData.map(d => ({ x: d.timestamp, y: d.value }));
+                    }
+                } else if (config.dataKey === 'throughputData' && metric.throughputData) {
+                    seriesData = metric.throughputData.map(d => ({ x: d.timestamp, y: d.value }));
+                } else if (config.dataKey === 'errorData' && metric.errorData) {
+                    seriesData = metric.errorData.map(d => ({ x: d.timestamp, y: d.value }));
+                }
 
-        // P50 and P90 by endpoint
-        endpoints.forEach(endpoint => {
-            p50Data[endpoint.name] = [];
-            p90Data[endpoint.name] = [];
+                if (seriesData.length > 0) {
+                    chartData[endpoint] = seriesData;
+                }
+            });
 
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                const base = endpoint.baseLatency + Math.sin(i / 10) * 15;
-                p50Data[endpoint.name].push({ x: timestamp, y: base + Math.random() * 10 });
-                p90Data[endpoint.name].push({ x: timestamp, y: base * 1.8 + Math.random() * 15 });
-            }
+            chart.setData(chartData);
         });
-
-        // P99 by operation type
-        operations.forEach(op => {
-            p99Data[op.name] = [];
-
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                const base = op.baseLatency + Math.sin(i / 8) * 20;
-                p99Data[op.name].push({ x: timestamp, y: base * 2.5 + Math.random() * 30 });
-            }
-        });
-
-        if (charts.p50) charts.p50.setData(p50Data);
-        if (charts.p90) charts.p90.setData(p90Data);
-        if (charts.p99) charts.p99.setData(p99Data);
     }
 
     /**
-     * Update throughput chart with multi-series data (by API endpoint)
+     * Parse endpoint string into method and path
      */
-    function updateThroughputChart(data) {
-        if (!charts.throughput) return;
-
-        const seriesData = groupDataBySeries(data, 'endpoint');
-        charts.throughput.setData(seriesData);
-    }
-
-    /**
-     * Update error rate chart with multi-series data (by API endpoint)
-     */
-    function updateErrorRateChart(data) {
-        if (!charts.errorRate) return;
-
-        const seriesData = groupDataBySeries(data, 'endpoint');
-        charts.errorRate.setData(seriesData);
-    }
-
-    /**
-     * Update CPU usage chart
-     */
-    function updateCpuChart(data) {
-        if (!charts.cpu) return;
-
-        const now = Date.now();
-        const timeRange = currentFilters.timeRange;
-        const dataPoints = 60;
-        const interval = timeRange / dataPoints;
-
-        const services = ['api-gateway', 'auth-service', 'metrics-service', 'logs-service'];
-        const seriesData = {};
-
-        services.forEach(service => {
-            const baseUsage = 20 + Math.random() * 30;
-            seriesData[service] = [];
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                const usage = baseUsage + Math.sin(i / 8) * 15 + Math.random() * 10;
-                seriesData[service].push({ x: timestamp, y: Math.min(100, Math.max(0, usage)) });
-            }
-        });
-
-        charts.cpu.setData(seriesData);
-    }
-
-    /**
-     * Update Memory usage chart
-     */
-    function updateMemoryChart(data) {
-        if (!charts.memory) return;
-
-        const now = Date.now();
-        const timeRange = currentFilters.timeRange;
-        const dataPoints = 60;
-        const interval = timeRange / dataPoints;
-
-        const services = ['api-gateway', 'auth-service', 'metrics-service', 'logs-service'];
-        const seriesData = {};
-
-        services.forEach(service => {
-            const baseMemory = 256 + Math.random() * 512;
-            seriesData[service] = [];
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                // Memory tends to grow slowly over time with occasional GC drops
-                const growth = i * 0.5;
-                const gcDrop = (i % 15 === 0) ? -50 : 0;
-                const memory = baseMemory + growth + gcDrop + Math.random() * 20;
-                seriesData[service].push({ x: timestamp, y: Math.max(100, memory) });
-            }
-        });
-
-        charts.memory.setData(seriesData);
-    }
-
-    /**
-     * Update service metrics chart - shows request count by API endpoint
-     */
-    function updateServiceMetricsChart(data) {
-        if (!charts.serviceMetrics) return;
-
-        // Group metrics by API endpoint
-        const endpointData = {};
-        const allMetrics = data.allMetrics || Object.values(data.metrics || {}).flat();
-
-        allMetrics.forEach(metric => {
-            const endpoint = metric.endpoint || 'Unknown';
-            if (!endpointData[endpoint]) {
-                endpointData[endpoint] = 0;
-            }
-            endpointData[endpoint]++;
-        });
-
-        // Convert to series format for InteractiveChart
-        const endpoints = Object.keys(endpointData);
-        const seriesData = {};
-        endpoints.forEach(endpoint => {
-            seriesData[endpoint] = [endpointData[endpoint]];
-        });
-
-        charts.serviceMetrics.setData(seriesData, ['Request Count']);
-    }
-
-    /**
-     * Update status codes chart
-     */
-    function updateStatusCodesChart(data) {
-        if (!charts.statusCodes) return;
-
-        // Generate mock status code distribution
-        const statusCodes = {
-            '200 OK': Math.floor(Math.random() * 5000 + 8000),
-            '201 Created': Math.floor(Math.random() * 500 + 200),
-            '400 Bad Request': Math.floor(Math.random() * 100 + 50),
-            '401 Unauthorized': Math.floor(Math.random() * 50 + 10),
-            '404 Not Found': Math.floor(Math.random() * 80 + 30),
-            '500 Server Error': Math.floor(Math.random() * 30 + 5)
-        };
-
-        const seriesData = {};
-        Object.keys(statusCodes).forEach(code => {
-            seriesData[code] = [statusCodes[code]];
-        });
-
-        charts.statusCodes.setData(seriesData, ['Count']);
-    }
-
-    /**
-     * Update pod level charts
-     */
-    function updatePodCharts(data) {
-        if (!charts.podCpu && !charts.podMemory) return;
-
-        const now = Date.now();
-        const timeRange = currentFilters.timeRange;
-        const dataPoints = 60;
-        const interval = timeRange / dataPoints;
-
-        // Pod data from MockDataService
-        const pods = [
-            { name: 'api-gateway-7d8f9c6b5-x2k4m', baseCpu: 25, baseMemory: 256 },
-            { name: 'api-gateway-7d8f9c6b5-p9n3q', baseCpu: 22, baseMemory: 248 },
-            { name: 'user-service-5c4d3b2a1-h7j8k', baseCpu: 35, baseMemory: 384 },
-            { name: 'payment-service-9e8f7g6h-q1w2e', baseCpu: 40, baseMemory: 512 },
-            { name: 'auth-service-6f5e4d3c-z9x8c', baseCpu: 18, baseMemory: 192 }
-        ];
-
-        const cpuData = {};
-        const memoryData = {};
-
-        pods.forEach(pod => {
-            cpuData[pod.name] = [];
-            memoryData[pod.name] = [];
-
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                const cpuVariation = Math.sin(i / 8) * 10 + Math.random() * 5;
-                const memVariation = Math.sin(i / 12) * 50 + Math.random() * 30;
-
-                cpuData[pod.name].push({ x: timestamp, y: Math.max(0, Math.min(100, pod.baseCpu + cpuVariation)) });
-                memoryData[pod.name].push({ x: timestamp, y: Math.max(0, pod.baseMemory + memVariation) });
-            }
-        });
-
-        if (charts.podCpu) charts.podCpu.setData(cpuData);
-        if (charts.podMemory) charts.podMemory.setData(memoryData);
-    }
-
-    /**
-     * Update container level charts
-     */
-    function updateContainerCharts(data) {
-        if (!charts.containerCpu && !charts.containerMemory) return;
-
-        const now = Date.now();
-        const timeRange = currentFilters.timeRange;
-        const dataPoints = 60;
-        const interval = timeRange / dataPoints;
-
-        // Container data
-        const containers = [
-            { name: 'api-gateway (x2k4m)', baseCpu: 20, baseMemory: 180 },
-            { name: 'envoy-proxy (x2k4m)', baseCpu: 5, baseMemory: 64 },
-            { name: 'user-service (h7j8k)', baseCpu: 30, baseMemory: 320 },
-            { name: 'payment-service (q1w2e)', baseCpu: 35, baseMemory: 420 },
-            { name: 'auth-service (z9x8c)', baseCpu: 15, baseMemory: 160 }
-        ];
-
-        const cpuData = {};
-        const memoryData = {};
-
-        containers.forEach(container => {
-            cpuData[container.name] = [];
-            memoryData[container.name] = [];
-
-            for (let i = 0; i < dataPoints; i++) {
-                const timestamp = now - timeRange + (i * interval);
-                const cpuVariation = Math.sin(i / 6) * 8 + Math.random() * 4;
-                const memVariation = Math.sin(i / 10) * 40 + Math.random() * 20;
-
-                cpuData[container.name].push({ x: timestamp, y: Math.max(0, Math.min(100, container.baseCpu + cpuVariation)) });
-                memoryData[container.name].push({ x: timestamp, y: Math.max(0, container.baseMemory + memVariation) });
-            }
-        });
-
-        if (charts.containerCpu) charts.containerCpu.setData(cpuData);
-        if (charts.containerMemory) charts.containerMemory.setData(memoryData);
+    function parseEndpoint(endpoint) {
+        if (!endpoint) return { method: 'GET', path: '/unknown' };
+        const parts = endpoint.split(' ');
+        if (parts.length >= 2) {
+            return { method: parts[0], path: parts.slice(1).join(' ') };
+        }
+        return { method: 'GET', path: endpoint };
     }
 
     /**
@@ -762,7 +544,7 @@
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
-        Object.values(charts).forEach(chart => chart && chart.destroy());
+        Object.values(charts).forEach(chart => chart && chart.destroy && chart.destroy());
     });
 
 })();

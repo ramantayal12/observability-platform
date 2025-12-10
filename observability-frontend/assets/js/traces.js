@@ -43,6 +43,7 @@
     let operationFacet = null;
     let podFacet = null;
     let containerFacet = null;
+    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -51,6 +52,7 @@
         console.log('Initializing Traces page (New Relic style)...');
 
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupQueryBar();
@@ -60,6 +62,9 @@
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
 
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
+
         // Load initial data
         await loadTraces();
 
@@ -68,6 +73,25 @@
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Traces] Team changed:', team);
+        loadTraces();
     }
 
     /**
@@ -302,7 +326,8 @@
             const endTime = Date.now();
             const startTime = endTime - currentFilters.timeRange;
 
-            const data = await apiService.fetchTraces({
+            // Use team-specific endpoint
+            const data = await apiService.fetchTeamTraces({
                 serviceName: currentFilters.service || undefined,
                 startTime,
                 endTime,

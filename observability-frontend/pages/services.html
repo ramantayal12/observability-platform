@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Services - ObserveX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/components.css">
 </head>
@@ -13,9 +16,8 @@
         <div class="sidebar-header">
             <div class="logo">
                 <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                 </div>
                 <span class="logo-text">ObserveX</span>
@@ -23,7 +25,9 @@
         </div>
 
         <nav class="sidebar-nav">
-            <a href="index.html" class="nav-link">
+            <div class="nav-section">Observe</div>
+
+            <a href="index.html" class="nav-link" data-tooltip="Overview">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
                     <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -33,7 +37,7 @@
                 <span class="nav-text">Overview</span>
             </a>
 
-            <a href="dashboards.html" class="nav-link">
+            <a href="dashboards.html" class="nav-link" data-tooltip="Dashboards">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
                     <rect x="11" y="2" width="7" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -43,7 +47,7 @@
                 <span class="nav-text">Dashboards</span>
             </a>
 
-            <a href="metrics.html" class="nav-link">
+            <a href="metrics.html" class="nav-link" data-tooltip="Metrics">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M3 15l4-4 3 3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     <path d="M3 3v14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -51,14 +55,14 @@
                 <span class="nav-text">Metrics</span>
             </a>
 
-            <a href="logs.html" class="nav-link">
+            <a href="logs.html" class="nav-link" data-tooltip="Logs">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span class="nav-text">Logs</span>
             </a>
 
-            <a href="traces.html" class="nav-link">
+            <a href="traces.html" class="nav-link" data-tooltip="Traces">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <circle cx="5" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
                     <circle cx="15" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
@@ -67,9 +71,9 @@
                 <span class="nav-text">Traces</span>
             </a>
 
-            <div class="nav-divider"></div>
+            <div class="nav-section">Manage</div>
 
-            <a href="services.html" class="nav-link active">
+            <a href="services.html" class="nav-link active" data-tooltip="Services">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
                     <rect x="12" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -79,12 +83,13 @@
                 <span class="nav-text">Services</span>
             </a>
 
-            <a href="alerts.html" class="nav-link">
+            <a href="alerts.html" class="nav-link" data-tooltip="Alerts">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M10 2a6 6 0 016 6c0 7 3 9 3 9H1s3-2 3-9a6 6 0 016-6z" stroke="currentColor" stroke-width="1.5"/>
                     <path d="M9 17v1a2 2 0 104 0v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span class="nav-text">Alerts</span>
+                <span class="nav-badge" id="alertBadge" style="display: none;">0</span>
             </a>
         </nav>
 
@@ -98,22 +103,22 @@
         <!-- Top Bar -->
         <header class="topbar">
             <div class="topbar-left">
-                <div class="logo">
-                    <div class="logo-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                            <circle cx="12" cy="12" r="3" fill="currentColor"/>
-                        </svg>
-                    </div>
-                    <span class="logo-text">ObserveX</span>
-                </div>
+                <!-- Team Selector -->
+                <div id="teamSelectorContainer"></div>
+
+                <!-- Breadcrumb -->
+                <nav class="breadcrumb">
+                    <a href="index.html" class="breadcrumb-item">Home</a>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-current">Services</span>
+                </nav>
             </div>
 
             <div class="topbar-right">
                 <!-- Time Picker -->
                 <div class="time-picker">
                     <button class="btn btn-secondary btn-sm" id="timePickerBtn">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                             <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 11a5 5 0 110-10 5 5 0 010 10zm.5-8H7.5v4l3.5 2 .5-1-3-1.5V5z"/>
                         </svg>
                         <span id="timePickerLabel">Last 1 hour</span>
@@ -230,9 +235,11 @@
     <script src="../services/MockDataService.js"></script>
     <script src="../services/ApiService.js"></script>
     <script src="../services/AuthService.js"></script>
+    <script src="../services/TenantService.js"></script>
     <script src="../components/BaseComponent.js"></script>
     <script src="../components/NotificationManager.js"></script>
     <script src="../components/TimeRangePicker.js"></script>
+    <script src="../components/TeamSelector.js"></script>
     <script src="../components/Sidebar.js"></script>
     <script src="../components/Topbar.js"></script>
     <script src="../components/AuthUI.js"></script>

@@ -42,6 +42,25 @@
     let loggerFacet = null;
     let podFacet = null;
     let containerFacet = null;
+    let teamSelector = null;
+
+    // Column configuration
+    const allColumns = [
+        { id: 'timestamp', label: 'Timestamp', default: true, width: '160px' },
+        { id: 'level', label: 'Level', default: true, width: '80px' },
+        { id: 'service', label: 'Service', default: true, width: '140px' },
+        { id: 'logger', label: 'Logger', default: false, width: '180px' },
+        { id: 'traceId', label: 'Trace ID', default: false, width: '160px' },
+        { id: 'spanId', label: 'Span ID', default: false, width: '140px' },
+        { id: 'host', label: 'Host', default: false, width: '120px' },
+        { id: 'pod', label: 'Pod', default: false, width: '180px' },
+        { id: 'container', label: 'Container', default: false, width: '120px' },
+        { id: 'thread', label: 'Thread', default: false, width: '100px' },
+        { id: 'duration', label: 'Duration', default: false, width: '80px' },
+        { id: 'message', label: 'Message', default: true, width: 'auto' }
+    ];
+    let visibleColumns = [];
+    const COLUMN_STORAGE_KEY = 'observability_logs_columns';
 
     /**
      * Initialize the page
@@ -49,16 +68,24 @@
     async function init() {
         console.log('Initializing Logs page (New Relic style)...');
 
+        // Load column preferences
+        loadColumnPreferences();
+
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupQueryBar();
         setupLiveTail();
         setupExport();
         setupFacetFilters();
+        setupColumnSelector();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
 
         // Load initial data
         await loadLogs();
@@ -68,6 +95,135 @@
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Load column preferences from localStorage
+     */
+    function loadColumnPreferences() {
+        const saved = localStorage.getItem(COLUMN_STORAGE_KEY);
+        if (saved) {
+            try {
+                visibleColumns = JSON.parse(saved);
+            } catch (e) {
+                visibleColumns = allColumns.filter(c => c.default).map(c => c.id);
+            }
+        } else {
+            visibleColumns = allColumns.filter(c => c.default).map(c => c.id);
+        }
+    }
+
+    /**
+     * Save column preferences to localStorage
+     */
+    function saveColumnPreferences() {
+        localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
+    }
+
+    /**
+     * Setup column selector dropdown
+     */
+    function setupColumnSelector() {
+        const btn = document.getElementById('columnSelectorBtn');
+        const dropdown = document.getElementById('columnSelectorDropdown');
+        const list = document.getElementById('columnSelectorList');
+        const resetBtn = document.getElementById('resetColumnsBtn');
+
+        if (!btn || !dropdown || !list) return;
+
+        // Render column checkboxes
+        renderColumnSelector();
+
+        // Toggle dropdown
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('open');
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        // Reset columns
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                visibleColumns = allColumns.filter(c => c.default).map(c => c.id);
+                saveColumnPreferences();
+                renderColumnSelector();
+                renderTableHeader();
+                renderLogs();
+            });
+        }
+    }
+
+    /**
+     * Render column selector checkboxes
+     */
+    function renderColumnSelector() {
+        const list = document.getElementById('columnSelectorList');
+        if (!list) return;
+
+        list.innerHTML = allColumns.map(col => `
+            <label class="column-selector-item">
+                <input type="checkbox"
+                       value="${col.id}"
+                       ${visibleColumns.includes(col.id) ? 'checked' : ''}
+                       onchange="window.toggleColumn('${col.id}', this.checked)">
+                <span class="column-selector-label">${col.label}</span>
+            </label>
+        `).join('');
+    }
+
+    /**
+     * Toggle column visibility
+     */
+    window.toggleColumn = function(columnId, visible) {
+        if (visible && !visibleColumns.includes(columnId)) {
+            // Add column in correct order
+            const orderedColumns = allColumns.map(c => c.id);
+            visibleColumns.push(columnId);
+            visibleColumns.sort((a, b) => orderedColumns.indexOf(a) - orderedColumns.indexOf(b));
+        } else if (!visible) {
+            visibleColumns = visibleColumns.filter(c => c !== columnId);
+        }
+        saveColumnPreferences();
+        renderTableHeader();
+        renderLogs();
+    };
+
+    /**
+     * Render table header based on visible columns
+     */
+    function renderTableHeader() {
+        const header = document.getElementById('logsTableHeader');
+        if (!header) return;
+
+        const cols = allColumns.filter(c => visibleColumns.includes(c.id));
+        header.innerHTML = cols.map(col =>
+            `<div class="logs-table-col col-${col.id}" style="width: ${col.width}; ${col.width === 'auto' ? 'flex: 1;' : ''}">${col.label}</div>`
+        ).join('');
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Logs] Team changed:', team);
+        loadLogs();
     }
 
     /**
@@ -343,7 +499,8 @@
             const endTime = Date.now();
             const startTime = endTime - currentFilters.timeRange;
 
-            const data = await apiService.fetchLogs({
+            // Use team-specific endpoint
+            const data = await apiService.fetchTeamLogs({
                 startTime,
                 endTime,
                 limit: 1000
@@ -402,8 +559,9 @@
             filteredLogs = filterByQuery(filteredLogs, currentFilters.query);
         }
 
-        // Update stats and render
+        // Update stats, histogram, and render
         updateStats();
+        updateHistogram();
         renderLogs();
         updateFacets();
     }
@@ -618,14 +776,25 @@
         const container = document.getElementById('logsTableBody');
         if (!container) return;
 
+        // Render table header first
+        renderTableHeader();
+
+        // Update counts
+        const displayCountEl = document.getElementById('logsDisplayCount');
+        const totalCountEl = document.getElementById('logsTotalCount');
+        if (totalCountEl) totalCountEl.textContent = allLogs.length;
+
         if (filteredLogs.length === 0) {
             container.innerHTML = '<div class="logs-loading">No logs found</div>';
+            if (displayCountEl) displayCountEl.textContent = '0';
             return;
         }
 
         // Sort by timestamp (most recent first)
         const sorted = [...filteredLogs].sort((a, b) => b.timestamp - a.timestamp);
         const limited = sorted.slice(0, 500);
+
+        if (displayCountEl) displayCountEl.textContent = limited.length;
 
         container.innerHTML = limited.map((log, index) => renderLogRow(log, index)).join('');
 
@@ -638,22 +807,53 @@
     }
 
     /**
-     * Render single log row
+     * Get cell value for a column
+     */
+    function getCellValue(log, columnId) {
+        switch (columnId) {
+            case 'timestamp':
+                return new Date(log.timestamp).toLocaleString();
+            case 'level':
+                return `<span class="log-level-badge level-${log.level.toLowerCase()}">${log.level}</span>`;
+            case 'service':
+                return escapeHtml(log.serviceName || '-');
+            case 'logger':
+                return escapeHtml(log.logger || '-');
+            case 'traceId':
+                return log.traceId ? `<span class="log-trace-id" title="${log.traceId}">${log.traceId.substring(0, 12)}...</span>` : '-';
+            case 'spanId':
+                return log.spanId ? `<span class="log-span-id">${log.spanId.substring(0, 10)}...</span>` : '-';
+            case 'host':
+                return escapeHtml(log.host || log.hostname || '-');
+            case 'pod':
+                return log.pod ? `<span title="${log.pod}">${truncate(log.pod, 20)}</span>` : '-';
+            case 'container':
+                return escapeHtml(log.container || '-');
+            case 'thread':
+                return escapeHtml(log.thread || log.threadName || '-');
+            case 'duration':
+                return log.duration ? `${log.duration}ms` : '-';
+            case 'message':
+                return escapeHtml(truncate(log.message, 120));
+            default:
+                return '-';
+        }
+    }
+
+    /**
+     * Render single log row with dynamic columns
      */
     function renderLogRow(log, index) {
-        const timestamp = new Date(log.timestamp).toLocaleString();
-        const levelClass = log.level.toLowerCase();
+        const cols = allColumns.filter(c => visibleColumns.includes(c.id));
+
+        const cells = cols.map(col => {
+            const width = col.width === 'auto' ? 'flex: 1;' : `width: ${col.width};`;
+            return `<div class="log-cell cell-${col.id}" style="${width}">${getCellValue(log, col.id)}</div>`;
+        }).join('');
 
         return `
             <div class="log-row" data-index="${index}">
-                <div class="log-row-main">
-                    <div class="log-cell cell-timestamp">${timestamp}</div>
-                    <div class="log-cell cell-level">
-                        <span class="log-level-badge level-${levelClass}">${log.level}</span>
-                    </div>
-                    <div class="log-cell cell-service">${escapeHtml(log.serviceName || 'Unknown')}</div>
-                    <div class="log-cell cell-message">${escapeHtml(truncate(log.message, 150))}</div>
-                </div>
+                <div class="log-row-main">${cells}</div>
                 <div class="log-details">
                     <div class="log-details-grid">
                         <div class="log-detail-item">
@@ -676,6 +876,24 @@
                         <div class="log-detail-item">
                             <span class="log-detail-label">Trace ID</span>
                             <span class="log-detail-value">${log.traceId}</span>
+                        </div>
+                        ` : ''}
+                        ${log.spanId ? `
+                        <div class="log-detail-item">
+                            <span class="log-detail-label">Span ID</span>
+                            <span class="log-detail-value">${log.spanId}</span>
+                        </div>
+                        ` : ''}
+                        ${log.host || log.hostname ? `
+                        <div class="log-detail-item">
+                            <span class="log-detail-label">Host</span>
+                            <span class="log-detail-value">${log.host || log.hostname}</span>
+                        </div>
+                        ` : ''}
+                        ${log.pod ? `
+                        <div class="log-detail-item">
+                            <span class="log-detail-label">Pod</span>
+                            <span class="log-detail-value">${log.pod}</span>
                         </div>
                         ` : ''}
                     </div>

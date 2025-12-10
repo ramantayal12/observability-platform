@@ -67,5 +67,28 @@ public interface LogRepository extends JpaRepository<LogEntity, Long> {
     List<Object[]> countByLevel(@Param("start") Instant start, @Param("end") Instant end);
 
     void deleteByTimestampBefore(Instant timestamp);
+
+    // Team-based queries
+    @Query("SELECT l FROM LogEntity l WHERE l.teamId = :teamId AND " +
+           "l.timestamp BETWEEN :start AND :end " +
+           "ORDER BY l.timestamp DESC")
+    List<LogEntity> findByTeamIdAndTimestampBetween(
+            @Param("teamId") Long teamId,
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            Pageable pageable);
+
+    @Query("SELECT l FROM LogEntity l WHERE l.teamId = :teamId AND " +
+           "(:level IS NULL OR l.level = :level) AND " +
+           "(:serviceName IS NULL OR l.serviceName = :serviceName) AND " +
+           "l.timestamp BETWEEN :start AND :end " +
+           "ORDER BY l.timestamp DESC")
+    List<LogEntity> findByTeamIdAndFilters(
+            @Param("teamId") Long teamId,
+            @Param("level") String level,
+            @Param("serviceName") String serviceName,
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            Pageable pageable);
 }
 

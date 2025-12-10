@@ -351,5 +351,147 @@ public class MockApiController {
         if (hours < 24) return hours + "h";
         return (hours / 24) + "d";
     }
+
+    @GetMapping("/alerts")
+    public Map<String, Object> getAlerts(
+            @RequestParam(required = false) Long startTime,
+            @RequestParam(required = false) Long endTime,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String severity) {
+
+        long end = endTime != null ? endTime : System.currentTimeMillis();
+        long start = startTime != null ? startTime : end - 86400000; // 24 hours
+
+        List<Map<String, Object>> alerts = generateAlerts(start, end, 25);
+
+        // Filter by status if provided
+        if (status != null && !status.isEmpty()) {
+            alerts = alerts.stream()
+                    .filter(a -> status.equals(a.get("status")))
+                    .toList();
+        }
+
+        // Filter by severity if provided
+        if (severity != null && !severity.isEmpty()) {
+            alerts = alerts.stream()
+                    .filter(a -> severity.equals(a.get("severity")))
+                    .toList();
+        }
+
+        long activeCount = alerts.stream().filter(a -> "active".equals(a.get("status"))).count();
+        long acknowledgedCount = alerts.stream().filter(a -> "acknowledged".equals(a.get("status"))).count();
+        long resolvedCount = alerts.stream().filter(a -> "resolved".equals(a.get("status"))).count();
+        long criticalCount = alerts.stream().filter(a -> "critical".equals(a.get("severity"))).count();
+        long warningCount = alerts.stream().filter(a -> "warning".equals(a.get("severity"))).count();
+
+        return Map.of(
+                "alerts", alerts,
+                "summary", Map.of(
+                        "total", alerts.size(),
+                        "active", activeCount,
+                        "acknowledged", acknowledgedCount,
+                        "resolved", resolvedCount,
+                        "critical", criticalCount,
+                        "warning", warningCount
+                ),
+                "timeRange", Map.of("startTime", start, "endTime", end)
+        );
+    }
+
+    private List<Map<String, Object>> generateAlerts(long start, long end, int count) {
+        List<String> alertTypes = List.of("metric", "log", "trace", "apm");
+        List<String> severities = List.of("critical", "warning", "info");
+        List<String> statuses = List.of("active", "acknowledged", "resolved", "muted");
+        List<String> alertNames = List.of(
+                "High Error Rate", "Latency Spike", "Memory Usage Critical",
+                "CPU Threshold Exceeded", "Database Connection Pool Exhausted",
+                "Request Timeout", "Service Unavailable", "Disk Space Low",
+                "SSL Certificate Expiring", "Rate Limit Exceeded"
+        );
+        List<String> metrics = List.of("error_rate", "latency_p99", "memory_usage", "cpu_usage", "request_count");
+        List<String> operators = List.of(">", ">=", "<", "<=");
+
+        List<Map<String, Object>> alerts = new ArrayList<>();
+        long timeRange = end - start;
+
+        for (int i = 0; i < count; i++) {
+            String service = mockData.randomService();
+            String alertType = alertTypes.get(mockData.randomInt(0, alertTypes.size() - 1));
+            String severity = i < 3 ? "critical" : (i < 10 ? "warning" : severities.get(mockData.randomInt(0, severities.size() - 1)));
+            String alertStatus = i < 5 ? "active" : statuses.get(mockData.randomInt(0, statuses.size() - 1));
+            long triggeredAt = start + (long) (Math.random() * timeRange);
+
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("id", i + 1);
+            alert.put("name", alertNames.get(mockData.randomInt(0, alertNames.size() - 1)));
+            alert.put("description", "Alert triggered for " + service);
+            alert.put("type", alertType);
+            alert.put("severity", severity);
+            alert.put("status", alertStatus);
+            alert.put("serviceName", service);
+            alert.put("metric", metrics.get(mockData.randomInt(0, metrics.size() - 1)));
+            alert.put("operator", operators.get(mockData.randomInt(0, operators.size() - 1)));
+            alert.put("threshold", mockData.randomValue(50, 100));
+            alert.put("currentValue", mockData.randomValue(60, 150));
+            alert.put("durationMinutes", mockData.randomInt(1, 15));
+            alert.put("triggeredAt", triggeredAt);
+            alert.put("createdAt", triggeredAt - mockData.randomInt(60000, 3600000));
+
+            if ("acknowledged".equals(alertStatus) || "resolved".equals(alertStatus)) {
+                alert.put("acknowledgedAt", triggeredAt + mockData.randomInt(60000, 600000));
+                alert.put("acknowledgedBy", "user@example.com");
+            }
+            if ("resolved".equals(alertStatus)) {
+                alert.put("resolvedAt", triggeredAt + mockData.randomInt(600000, 3600000));
+                alert.put("resolvedBy", "user@example.com");
+            }
+
+            alerts.add(alert);
+        }
+
+        alerts.sort((a, b) -> Long.compare((long) b.get("triggeredAt"), (long) a.get("triggeredAt")));
+        return alerts;
+    }
+
+    @GetMapping("/context")
+    public Map<String, Object> getContext() {
+        // Returns mock user context with teams
+        return Map.of(
+                "user", Map.of(
+                        "id", 1,
+                        "email", "demo@observex.io",
+                        "name", "Demo User",
+                        "role", "admin",
+                        "avatarUrl", "https://ui-avatars.com/api/?name=Demo+User&background=3B82F6&color=fff"
+                ),
+                "organization", Map.of(
+                        "id", 1,
+                        "name", "ObserveX Demo",
+                        "slug", "observex-demo",
+                        "plan", "enterprise"
+                ),
+                "teams", List.of(
+                        Map.of("id", 1, "name", "Platform Team", "slug", "platform", "color", "#3B82F6", "role", "owner"),
+                        Map.of("id", 2, "name", "Backend Team", "slug", "backend", "color", "#10B981", "role", "admin"),
+                        Map.of("id", 3, "name", "Frontend Team", "slug", "frontend", "color", "#F59E0B", "role", "member"),
+                        Map.of("id", 4, "name", "DevOps Team", "slug", "devops", "color", "#EF4444", "role", "member"),
+                        Map.of("id", 5, "name", "Data Team", "slug", "data", "color", "#8B5CF6", "role", "viewer")
+                ),
+                "currentTeam", Map.of("id", 1, "name", "Platform Team", "slug", "platform", "color", "#3B82F6")
+        );
+    }
+
+    @GetMapping("/teams")
+    public Map<String, Object> getTeams() {
+        return Map.of(
+                "teams", List.of(
+                        Map.of("id", 1, "name", "Platform Team", "slug", "platform", "color", "#3B82F6", "description", "Core platform infrastructure", "memberCount", 8),
+                        Map.of("id", 2, "name", "Backend Team", "slug", "backend", "color", "#10B981", "description", "Backend services and APIs", "memberCount", 12),
+                        Map.of("id", 3, "name", "Frontend Team", "slug", "frontend", "color", "#F59E0B", "description", "Web and mobile applications", "memberCount", 6),
+                        Map.of("id", 4, "name", "DevOps Team", "slug", "devops", "color", "#EF4444", "description", "Infrastructure and deployment", "memberCount", 5),
+                        Map.of("id", 5, "name", "Data Team", "slug", "data", "color", "#8B5CF6", "description", "Data engineering and analytics", "memberCount", 7)
+                )
+        );
+    }
 }
 

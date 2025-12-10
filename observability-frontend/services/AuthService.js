@@ -1,31 +1,13 @@
 /**
- * AuthService - Mock Authentication Service
- * Handles user authentication with mock database calls
+ * AuthService - Authentication Service
+ * Handles user authentication with backend API
  */
 class AuthService {
     constructor() {
         this.storageKey = 'observability_auth';
         this.sessionKey = 'observability_session';
-        
-        // Mock user database
-        this.mockUsers = [
-            {
-                id: 1,
-                username: 'admin',
-                password: 'admin',
-                email: 'admin@observex.io',
-                role: 'admin',
-                name: 'Administrator'
-            },
-            {
-                id: 2,
-                username: 'user',
-                password: 'user123',
-                email: 'user@observex.io',
-                role: 'viewer',
-                name: 'Demo User'
-            }
-        ];
+        this.tokenKey = 'observability_token';
+        this.baseUrl = window.API_CONFIG?.BASE_URL || '/api';
     }
 
     /**
@@ -39,89 +21,99 @@ class AuthService {
     }
 
     /**
-     * Mock database call to authenticate user
-     * @param {string} username 
-     * @param {string} password 
+     * Authenticate user with backend API
+     * @param {string} email
+     * @param {string} password
      * @returns {Promise<Object>} Authentication result
      */
-    async authenticate(username, password) {
-        console.log('[AuthService] Authenticating user:', username);
-        
-        // Simulate network delay (mock database call)
-        await this.simulateNetworkDelay(800);
-        
-        // Find user in mock database
-        const user = this.mockUsers.find(
-            u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-        );
-        
-        if (!user) {
-            console.log('[AuthService] Authentication failed: Invalid credentials');
+    async authenticate(email, password) {
+        console.log('[AuthService] Authenticating user:', email);
+
+        try {
+            const response = await fetch(`${this.baseUrl}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                console.log('[AuthService] Authentication failed:', data.error?.message);
+                return {
+                    success: false,
+                    error: data.error?.message || 'Invalid email or password'
+                };
+            }
+
+            const authData = data.data;
+
+            // Create session from response
+            const session = {
+                token: authData.token,
+                tokenType: authData.tokenType,
+                userId: authData.user.id,
+                role: authData.user.role,
+                createdAt: Date.now(),
+                expiresAt: Date.now() + authData.expiresIn
+            };
+
+            console.log('[AuthService] Authentication successful for:', authData.user.email);
+
+            return {
+                success: true,
+                user: authData.user,
+                organization: authData.organization,
+                teams: authData.teams,
+                currentTeam: authData.currentTeam,
+                session: session
+            };
+        } catch (error) {
+            console.error('[AuthService] Authentication error:', error);
             return {
                 success: false,
-                error: 'Invalid username or password'
+                error: 'Network error. Please try again.'
             };
         }
-        
-        // Generate mock session token
-        const session = this.createSession(user);
-        
-        console.log('[AuthService] Authentication successful for:', user.username);
-        
-        return {
-            success: true,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email,
-                role: user.role,
-                name: user.name
-            },
-            session: session
-        };
     }
 
     /**
-     * Create a session for authenticated user
+     * Get JWT token
      */
-    createSession(user) {
-        const session = {
-            token: this.generateToken(),
-            userId: user.id,
-            username: user.username,
-            role: user.role,
-            createdAt: Date.now(),
-            expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-        };
-        
-        return session;
+    getToken() {
+        const session = this.getSession();
+        return session?.session?.token || null;
     }
 
     /**
-     * Generate a mock JWT-like token
+     * Get authorization header
      */
-    generateToken() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let token = '';
-        for (let i = 0; i < 64; i++) {
-            token += chars.charAt(Math.floor(Math.random() * chars.length));
+    getAuthHeader() {
+        const token = this.getToken();
+        if (token) {
+            return { 'Authorization': `Bearer ${token}` };
         }
-        return token;
+        return {};
     }
 
     /**
      * Save session to storage
      */
-    saveSession(session, user, remember = false) {
-        const authData = {
+    saveSession(session, user, authData, remember = false) {
+        const data = {
             session: session,
-            user: user
+            user: user,
+            organization: authData?.organization,
+            teams: authData?.teams,
+            currentTeam: authData?.currentTeam
         };
-        
+
         if (remember) {
-            localStorage.setItem(this.storageKey, JSON.stringify(authData));
+            localStorage.setItem(this.storageKey, JSON.stringify(data));
         } else {
-            sessionStorage.setItem(this.sessionKey, JSON.stringify(authData));
+            sessionStorage.setItem(this.sessionKey, JSON.stringify(data));
         }
     }
 
@@ -134,20 +126,20 @@ class AuthService {
         if (!authData) {
             authData = localStorage.getItem(this.storageKey);
         }
-        
+
         if (!authData) {
             return null;
         }
-        
+
         try {
             const parsed = JSON.parse(authData);
-            
+
             // Check if session is expired
             if (parsed.session && parsed.session.expiresAt < Date.now()) {
                 this.logout();
                 return null;
             }
-            
+
             return parsed;
         } catch (e) {
             console.error('[AuthService] Error parsing session:', e);
@@ -172,19 +164,39 @@ class AuthService {
     }
 
     /**
-     * Logout user
+     * Get organization info
      */
-    logout() {
-        console.log('[AuthService] Logging out user');
-        localStorage.removeItem(this.storageKey);
-        sessionStorage.removeItem(this.sessionKey);
+    getOrganization() {
+        const session = this.getSession();
+        return session ? session.organization : null;
     }
 
     /**
-     * Simulate network delay for mock API calls
+     * Get teams
      */
-    simulateNetworkDelay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+    getTeams() {
+        const session = this.getSession();
+        return session ? session.teams : [];
+    }
+
+    /**
+     * Logout user
+     */
+    async logout() {
+        console.log('[AuthService] Logging out user');
+
+        try {
+            // Call backend logout endpoint
+            await fetch(`${this.baseUrl}/auth/logout`, {
+                method: 'POST',
+                headers: this.getAuthHeader()
+            });
+        } catch (error) {
+            console.error('[AuthService] Logout error:', error);
+        }
+
+        localStorage.removeItem(this.storageKey);
+        sessionStorage.removeItem(this.sessionKey);
     }
 
     /**
@@ -200,22 +212,61 @@ class AuthService {
     }
 
     /**
-     * Mock API call to validate session with server
+     * Validate session with backend
      */
     async validateSession() {
         const session = this.getSession();
         if (!session) {
             return { valid: false };
         }
-        
-        // Simulate network delay
-        await this.simulateNetworkDelay(200);
-        
-        // Mock validation - in real app this would call the server
-        return {
-            valid: session.session.expiresAt > Date.now(),
-            user: session.user
-        };
+
+        try {
+            const response = await fetch(`${this.baseUrl}/auth/validate`, {
+                method: 'GET',
+                headers: this.getAuthHeader()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                return { valid: false };
+            }
+
+            return {
+                valid: data.data.valid,
+                user: session.user
+            };
+        } catch (error) {
+            console.error('[AuthService] Session validation error:', error);
+            // Fall back to local validation
+            return {
+                valid: session.session.expiresAt > Date.now(),
+                user: session.user
+            };
+        }
+    }
+
+    /**
+     * Fetch context from backend
+     */
+    async fetchContext() {
+        try {
+            const response = await fetch(`${this.baseUrl}/auth/context`, {
+                method: 'GET',
+                headers: this.getAuthHeader()
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                return null;
+            }
+
+            return data.data;
+        } catch (error) {
+            console.error('[AuthService] Context fetch error:', error);
+            return null;
+        }
     }
 }
 

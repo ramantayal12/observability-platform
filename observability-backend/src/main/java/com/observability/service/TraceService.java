@@ -2,12 +2,18 @@ package com.observability.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.observability.common.exception.ResourceNotFoundException;
+import com.observability.dto.response.SpanResponse;
+import com.observability.dto.response.TraceResponse;
 import com.observability.entity.SpanEntity;
 import com.observability.entity.TraceEntity;
+import com.observability.mapper.SpanMapper;
+import com.observability.mapper.TraceMapper;
 import com.observability.model.Span;
 import com.observability.model.Trace;
 import com.observability.repository.SpanRepository;
 import com.observability.repository.TraceRepository;
+import com.observability.service.api.TraceServiceApi;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -18,14 +24,75 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for trace operations.
+ * Implements TraceServiceApi for clean abstraction.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class TraceService {
+public class TraceService implements TraceServiceApi {
 
     private final TraceRepository traceRepository;
     private final SpanRepository spanRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TraceMapper traceMapper;
+    private final SpanMapper spanMapper;
+    private final ObjectMapper objectMapper;
+
+    // ==================== API Interface Methods ====================
+
+    @Override
+    public List<TraceResponse> getTraces(String serviceName, String status,
+                                          Instant start, Instant end, int limit) {
+        List<TraceEntity> entities = traceRepository.findByFilters(
+                serviceName, status, null, null, start, end, PageRequest.of(0, limit));
+        return traceMapper.toDtoList(entities);
+    }
+
+    @Override
+    public TraceResponse getTraceById(String traceId) {
+        TraceEntity entity = traceRepository.findByTraceId(traceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Trace", traceId));
+        List<SpanResponse> spans = getSpansForTrace(traceId);
+        return traceMapper.toDtoWithSpans(entity, spans);
+    }
+
+    @Override
+    public List<SpanResponse> getSpansForTrace(String traceId) {
+        List<SpanEntity> entities = spanRepository.findByTraceIdOrderByStartTimeAsc(traceId);
+        return spanMapper.toDtoList(entities);
+    }
+
+    @Override
+    public Map<String, Long> getTraceCountByStatus(String serviceName, Instant start, Instant end) {
+        List<Object[]> results = traceRepository.countByStatus(start, end);
+        Map<String, Long> counts = new HashMap<>();
+        for (Object[] row : results) {
+            counts.put((String) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    @Override
+    public Double getAverageDuration(String serviceName, Instant start, Instant end) {
+        // TODO: Implement average duration query in repository
+        return 0.0;
+    }
+
+    @Override
+    public List<String> getDistinctServices() {
+        return traceRepository.findDistinctServiceNames();
+    }
+
+    @Override
+    @Transactional
+    public void deleteOldTraces(Instant before) {
+        traceRepository.deleteByStartTimeBefore(before);
+        spanRepository.deleteByStartTimeBefore(before);
+        log.info("Deleted traces and spans before {}", before);
+    }
+
+    // ==================== Legacy Model Methods (for backward compatibility) ====================
 
     @Transactional
     public void saveSpan(Span span) {
@@ -90,25 +157,11 @@ public class TraceService {
                 .collect(Collectors.toList());
     }
 
-    public List<String> getDistinctServices() {
-        return traceRepository.findDistinctServiceNames();
-    }
-
     public Map<String, Long> getStatusCounts(Instant start, Instant end) {
-        List<Object[]> results = traceRepository.countByStatus(start, end);
-        Map<String, Long> counts = new HashMap<>();
-        for (Object[] row : results) {
-            counts.put((String) row[0], (Long) row[1]);
-        }
-        return counts;
+        return getTraceCountByStatus(null, start, end);
     }
 
-    @Transactional
-    public void deleteOldTraces(Instant before) {
-        traceRepository.deleteByStartTimeBefore(before);
-        spanRepository.deleteByStartTimeBefore(before);
-        log.info("Deleted traces and spans before {}", before);
-    }
+    // ==================== Private Helper Methods ====================
 
     private TraceEntity createTrace(Span span) {
         TraceEntity trace = TraceEntity.builder()

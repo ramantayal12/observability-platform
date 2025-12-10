@@ -18,12 +18,17 @@
     const stateManager = StateManager.getInstance();
     const apiService = ApiService.getInstance();
     const notificationManager = NotificationManager.getInstance();
+    const sharedDataService = SharedDataService.getInstance();
 
     // Page state
     let autoRefreshInterval = null;
     let charts = {};
+    let sparklineCharts = {};
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
     let timeRangePicker = null;
+
+    // Team selector instance
+    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -32,12 +37,16 @@
         console.log('Initializing Overview page...');
 
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupCharts();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
 
         // Load initial data
         await loadOverview();
@@ -47,6 +56,28 @@
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Overview] Team changed:', team);
+        // Clear existing charts so they get re-initialized with new team's config
+        Object.values(charts).forEach(chart => chart && chart.destroy && chart.destroy());
+        charts = {};
+        loadOverview();
     }
 
     /**
@@ -132,47 +163,54 @@
     }
 
     /**
-     * Setup charts using InteractiveChart component
+     * Setup interactive charts - charts will be created dynamically based on backend config
      */
     function setupCharts() {
         if (typeof InteractiveChart === 'undefined') {
             console.warn('[Overview] InteractiveChart not available');
             return;
         }
+        // Charts will be created dynamically when data is received
+        console.log('[Overview] Charts will be initialized from backend config');
+    }
 
-        // API Latency Chart - multi-line by endpoint
-        charts.latency = new InteractiveChart({
-            containerId: 'latencyChartContainer',
-            unit: 'ms',
-            height: 220,
-            showLegend: true
+    /**
+     * Initialize charts from backend configuration
+     */
+    function initializeChartsFromConfig(chartConfigs) {
+        if (!chartConfigs || chartConfigs.length === 0) {
+            console.warn('[Overview] No chart configuration received from backend');
+            return;
+        }
+
+        const chartsGrid = document.querySelector('.charts-grid');
+        if (!chartsGrid) return;
+
+        // Clear existing chart cards and create new ones based on config
+        chartsGrid.innerHTML = '';
+
+        chartConfigs.forEach(config => {
+            const chartCard = document.createElement('div');
+            chartCard.className = 'chart-card';
+            chartCard.innerHTML = `
+                <div class="chart-header">
+                    <h3 class="chart-title">${config.title}</h3>
+                </div>
+                <div class="chart-body" id="${config.id}ChartContainer"></div>
+            `;
+            chartsGrid.appendChild(chartCard);
+
+            // Create the chart instance
+            charts[config.id] = new InteractiveChart({
+                containerId: `${config.id}ChartContainer`,
+                chartType: config.type || 'line',
+                unit: config.unit || '',
+                height: 250,
+                showLegend: true
+            });
         });
 
-        // Service Latency Chart - bar chart by service
-        charts.serviceLatency = new InteractiveChart({
-            containerId: 'serviceLatencyChartContainer',
-            chartType: 'bar',
-            unit: 'ms',
-            height: 220,
-            showLegend: true,
-            fill: false
-        });
-
-        // Throughput Chart - multi-line by service
-        charts.throughput = new InteractiveChart({
-            containerId: 'throughputChartContainer',
-            unit: 'req/min',
-            height: 220,
-            showLegend: true
-        });
-
-        // Error Rate Chart - multi-line by service
-        charts.errorRate = new InteractiveChart({
-            containerId: 'errorRateChartContainer',
-            unit: '%',
-            height: 220,
-            showLegend: true
-        });
+        console.log('[Overview] Charts initialized from backend config:', Object.keys(charts));
     }
 
     /**
@@ -181,7 +219,8 @@
     async function loadOverview() {
         console.log('[Overview] Loading overview data...');
         try {
-            const data = await apiService.fetchOverview({ timeRange: currentTimeRange });
+            // Use team-specific endpoint if available, fallback to general endpoint
+            const data = await apiService.fetchTeamOverview({ timeRange: currentTimeRange });
             console.log('[Overview] Data received:', data);
 
             // Update stats
@@ -205,78 +244,317 @@
     function updateStats(stats) {
         if (!stats) return;
 
+        // Main stat values
         const avgLatencyEl = document.getElementById('avgApiLatency');
         const throughputEl = document.getElementById('throughput');
         const errorRateEl = document.getElementById('errorRate');
         const activeServicesEl = document.getElementById('activeServices');
 
-        if (avgLatencyEl) avgLatencyEl.textContent = `${stats.avgLatency.toFixed(2)} ms`;
-        if (throughputEl) throughputEl.textContent = `${stats.throughput.toFixed(0)} req/min`;
+        if (avgLatencyEl) avgLatencyEl.textContent = `${stats.avgLatency.toFixed(0)} ms`;
+        if (throughputEl) throughputEl.textContent = `${stats.throughput.toFixed(0)}`;
         if (errorRateEl) errorRateEl.textContent = `${stats.errorRate.toFixed(2)}%`;
         if (activeServicesEl) activeServicesEl.textContent = stats.activeServices;
+
+        // Additional enterprise stats
+        const p95LatencyEl = document.getElementById('p95Latency');
+        const peakThroughputEl = document.getElementById('peakThroughput');
+        const healthyServicesEl = document.getElementById('healthyServices');
+        const degradedServicesEl = document.getElementById('degradedServices');
+        const error4xxEl = document.getElementById('error4xx');
+        const error5xxEl = document.getElementById('error5xx');
+
+        // Calculate P95 (simulated as 1.5x avg for demo)
+        if (p95LatencyEl) p95LatencyEl.textContent = `${(stats.avgLatency * 1.5).toFixed(0)}ms`;
+
+        // Peak throughput (simulated as 1.3x avg for demo)
+        if (peakThroughputEl) peakThroughputEl.textContent = `${(stats.throughput * 1.3).toFixed(0)}`;
+
+        // Services health
+        if (healthyServicesEl) healthyServicesEl.textContent = stats.activeServices;
+        if (degradedServicesEl) degradedServicesEl.textContent = '0';
+
+        // Error breakdown (simulated)
+        const totalErrors = stats.errorRate * stats.throughput / 100;
+        if (error4xxEl) error4xxEl.textContent = Math.floor(totalErrors * 0.7);
+        if (error5xxEl) error5xxEl.textContent = Math.floor(totalErrors * 0.3);
+
+        // Update error rate card status
+        const errorRateCard = document.getElementById('errorRateCard');
+        if (errorRateCard) {
+            errorRateCard.classList.remove('healthy', 'warning', 'critical');
+            if (stats.errorRate < 1) {
+                errorRateCard.classList.add('healthy');
+            } else if (stats.errorRate < 5) {
+                errorRateCard.classList.add('warning');
+            } else {
+                errorRateCard.classList.add('critical');
+            }
+        }
+
+        // Update system status in topbar
+        updateSystemStatus(stats);
     }
 
     /**
-     * Update charts with new data using InteractiveChart (API endpoint level)
+     * Update system status indicator
+     */
+    function updateSystemStatus(stats) {
+        const statusEl = document.getElementById('systemStatus');
+        if (!statusEl) return;
+
+        statusEl.classList.remove('warning', 'critical');
+
+        if (stats.errorRate >= 5) {
+            statusEl.classList.add('critical');
+            statusEl.innerHTML = '<span class="status-dot"></span><span>System Degraded</span>';
+        } else if (stats.errorRate >= 1) {
+            statusEl.classList.add('warning');
+            statusEl.innerHTML = '<span class="status-dot"></span><span>Minor Issues</span>';
+        } else {
+            statusEl.innerHTML = '<span class="status-dot"></span><span>All Systems Operational</span>';
+        }
+    }
+
+    /**
+     * Update charts and API endpoints list
      */
     function updateCharts(data) {
-        console.log('[Overview] Updating charts with data:', data);
+        console.log('[Overview] Updating charts and API endpoints with data:', data);
 
-        // Update latency chart - group by API endpoint
-        if (charts.latency && data.latencyData) {
-            const seriesData = groupDataBySeries(data.latencyData, 'endpoint');
-            charts.latency.setData(seriesData);
+        // Initialize charts from backend config if not already done
+        if (data.charts && Object.keys(charts).length === 0) {
+            initializeChartsFromConfig(data.charts);
         }
 
-        // Update throughput chart - group by API endpoint
-        if (charts.throughput && data.throughputData) {
-            const seriesData = groupDataBySeries(data.throughputData, 'endpoint');
-            charts.throughput.setData(seriesData);
-        }
+        // Render API endpoints list (linear)
+        renderApiEndpointsList(data);
 
-        // Update error rate chart - group by API endpoint
-        if (charts.errorRate && data.errorRateData) {
-            const seriesData = groupDataBySeries(data.errorRateData, 'endpoint');
-            charts.errorRate.setData(seriesData);
-        }
-
-        // Update service latency chart - bar chart by API endpoint
-        if (charts.serviceLatency && data.serviceLatency) {
-            const seriesData = {};
-            data.serviceLatency.forEach(d => {
-                seriesData[d.serviceName] = [d.avgLatency];
-            });
-            charts.serviceLatency.setData(seriesData, ['Avg Latency']);
-        }
+        // Update interactive charts using backend config
+        updateInteractiveCharts(data);
     }
 
     /**
-     * Group time series data by a field for multi-line charts
+     * Render API endpoints table (enterprise style with detailed metrics)
      */
-    function groupDataBySeries(data, groupByField) {
-        if (!data || data.length === 0) {
-            return { 'No Data': [] };
+    function renderApiEndpointsList(data) {
+        const listEl = document.getElementById('apiEndpointsList');
+        const countEl = document.getElementById('apiEndpointCount');
+
+        if (!listEl) return;
+
+        // Use SharedDataService to process and cache endpoint data
+        const endpoints = sharedDataService.processEndpointData(data);
+        const endpointList = Object.keys(endpoints);
+
+        if (countEl) {
+            countEl.textContent = `${endpointList.length} endpoints`;
         }
 
-        const grouped = {};
+        if (endpointList.length === 0) {
+            listEl.innerHTML = '<div class="api-loading">No API endpoints found</div>';
+            return;
+        }
 
-        data.forEach(item => {
-            const seriesName = item[groupByField] || item.serviceName || 'Default';
-            if (!grouped[seriesName]) {
-                grouped[seriesName] = [];
+        // Destroy existing sparkline charts
+        Object.values(sparklineCharts).forEach(chart => chart.destroy());
+        sparklineCharts = {};
+
+        // Render endpoint rows with detailed metrics
+        listEl.innerHTML = endpointList.map((endpoint, idx) => {
+            const epData = endpoints[endpoint];
+            const m = epData.metrics;
+            const { method, path } = parseEndpoint(endpoint);
+            const errorClass = m.avgErrorRate >= 5 ? 'critical' : '';
+
+            return `
+                <div class="api-table-row" data-endpoint="${endpoint}">
+                    <div class="api-endpoint-cell">
+                        <span class="api-method-badge ${method.toLowerCase()}">${method}</span>
+                        <span class="api-path-text" title="${path}">${path}</span>
+                    </div>
+                    <div class="api-metric-cell latency">${m.avgLatency.toFixed(0)}</div>
+                    <div class="api-metric-cell p50">${m.p50Latency.toFixed(0)}</div>
+                    <div class="api-metric-cell p90">${m.p90Latency.toFixed(0)}</div>
+                    <div class="api-metric-cell p95">${m.p95Latency.toFixed(0)}</div>
+                    <div class="api-metric-cell p99">${m.p99Latency.toFixed(0)}</div>
+                    <div class="api-metric-cell throughput">${m.avgThroughput.toFixed(0)}/m</div>
+                    <div class="api-metric-cell error ${errorClass}">${m.avgErrorRate.toFixed(2)}%</div>
+                    <div class="api-sparkline-cell">
+                        <canvas id="sparkline-${idx}" width="90" height="20"></canvas>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Render sparkline charts for each endpoint
+        endpointList.forEach((endpoint, idx) => {
+            const epData = endpoints[endpoint];
+            renderSparkline(`sparkline-${idx}`, epData.latencyData);
+        });
+    }
+
+    /**
+     * Render a mini sparkline chart
+     */
+    function renderSparkline(canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !data || data.length === 0) return;
+
+        const ctx = canvas.getContext('2d');
+        sparklineCharts[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map((_, i) => i),
+                datasets: [{
+                    data: data,
+                    borderColor: '#774FF8',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                animation: false
             }
-            grouped[seriesName].push({
-                x: item.timestamp,
-                y: item.value
+        });
+    }
+
+    /**
+     * Update interactive charts with data based on backend config
+     */
+    function updateInteractiveCharts(data) {
+        // Group data by endpoint for multi-line charts
+        const endpoints = groupDataByEndpoint(data);
+        const endpointList = Object.keys(endpoints);
+
+        // Get chart configs from backend
+        const chartConfigs = data.charts || [];
+
+        // Prepare data for each chart based on its config
+        chartConfigs.forEach(config => {
+            const chart = charts[config.id];
+            if (!chart) {
+                console.warn(`[Overview] Chart not found for config: ${config.id}`);
+                return;
+            }
+
+            const chartData = {};
+
+            if (config.type === 'bar' && config.dataKey === 'serviceLatency') {
+                // Bar chart for service latency - use serviceLatency data directly
+                const serviceLatencyData = data.serviceLatency || [];
+                serviceLatencyData.forEach(item => {
+                    const name = item.serviceName || item.endpoint || 'Unknown';
+                    chartData[name] = [item.avgLatency];
+                });
+                chart.setData(chartData, ['Avg Latency']);
+            } else if (config.type === 'bar') {
+                // Other bar charts - use average values from grouped data
+                endpointList.forEach(endpoint => {
+                    const epData = endpoints[endpoint];
+                    chartData[endpoint] = [epData.avgLatency];
+                });
+                chart.setData(chartData, ['Avg Latency']);
+            } else {
+                // Line chart - use time series data
+                endpointList.forEach(endpoint => {
+                    const epData = endpoints[endpoint];
+                    let seriesData = [];
+
+                    // Map dataKey to the correct data array
+                    if (config.dataKey === 'latencyData' && epData.latencyData) {
+                        seriesData = epData.latencyData.map((v, i) => ({ x: Date.now() - (epData.latencyData.length - i) * 60000, y: v }));
+                    } else if (config.dataKey === 'throughputData' && epData.throughputData) {
+                        seriesData = epData.throughputData.map((v, i) => ({ x: Date.now() - (epData.throughputData.length - i) * 60000, y: v }));
+                    } else if (config.dataKey === 'errorRateData' && epData.errorData) {
+                        seriesData = epData.errorData.map((v, i) => ({ x: Date.now() - (epData.errorData.length - i) * 60000, y: v }));
+                    }
+
+                    if (seriesData.length > 0) {
+                        chartData[endpoint] = seriesData;
+                    }
+                });
+
+                if (Object.keys(chartData).length > 0) {
+                    chart.setData(chartData);
+                } else {
+                    console.warn(`[Overview] No data for chart: ${config.id}`);
+                }
+            }
+        });
+    }
+
+    /**
+     * Group data by endpoint
+     */
+    function groupDataByEndpoint(data) {
+        const endpoints = {};
+
+        // Process latency data
+        if (data.latencyData) {
+            data.latencyData.forEach(item => {
+                const ep = item.endpoint || 'Unknown';
+                if (!endpoints[ep]) {
+                    endpoints[ep] = { latencyData: [], throughputData: [], errorData: [], latencySum: 0, throughputSum: 0, errorSum: 0, count: 0 };
+                }
+                endpoints[ep].latencyData.push(item.value);
+                endpoints[ep].latencySum += item.value;
+                endpoints[ep].count++;
             });
+        }
+
+        // Process throughput data
+        if (data.throughputData) {
+            data.throughputData.forEach(item => {
+                const ep = item.endpoint || 'Unknown';
+                if (!endpoints[ep]) {
+                    endpoints[ep] = { latencyData: [], throughputData: [], errorData: [], latencySum: 0, throughputSum: 0, errorSum: 0, count: 0 };
+                }
+                endpoints[ep].throughputData.push(item.value);
+                endpoints[ep].throughputSum += item.value;
+            });
+        }
+
+        // Process error rate data
+        if (data.errorRateData) {
+            data.errorRateData.forEach(item => {
+                const ep = item.endpoint || 'Unknown';
+                if (!endpoints[ep]) {
+                    endpoints[ep] = { latencyData: [], throughputData: [], errorData: [], latencySum: 0, throughputSum: 0, errorSum: 0, count: 0 };
+                }
+                endpoints[ep].errorData.push(item.value);
+                endpoints[ep].errorSum += item.value;
+            });
+        }
+
+        // Calculate averages
+        Object.keys(endpoints).forEach(ep => {
+            const d = endpoints[ep];
+            d.avgLatency = d.count > 0 ? d.latencySum / d.count : 0;
+            d.avgThroughput = d.throughputData.length > 0 ? d.throughputSum / d.throughputData.length : 0;
+            d.avgErrorRate = d.errorData.length > 0 ? d.errorSum / d.errorData.length : 0;
         });
 
-        // Sort each series by timestamp
-        Object.keys(grouped).forEach(key => {
-            grouped[key].sort((a, b) => a.x - b.x);
-        });
+        return endpoints;
+    }
 
-        return grouped;
+    /**
+     * Parse endpoint string into method and path
+     */
+    function parseEndpoint(endpoint) {
+        const parts = endpoint.split(' ');
+        if (parts.length >= 2) {
+            return { method: parts[0], path: parts.slice(1).join(' ') };
+        }
+        return { method: 'GET', path: endpoint };
     }
 
     /**

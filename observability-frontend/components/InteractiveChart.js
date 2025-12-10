@@ -35,14 +35,32 @@ class InteractiveChart {
         }
         this.render(container);
     }
-    
+
+    /**
+     * Create gradient fill for area charts
+     */
+    createGradientFill(color) {
+        // Return a function that creates gradient when canvas is available
+        return (context) => {
+            const chart = context.chart;
+            const { ctx, chartArea } = chart;
+            if (!chartArea) return color + '20';
+
+            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            gradient.addColorStop(0, color + '40');
+            gradient.addColorStop(0.5, color + '15');
+            gradient.addColorStop(1, color + '00');
+            return gradient;
+        };
+    }
+
     render(container) {
         const canvasId = `${this.containerId}-canvas`;
         const legendId = `${this.containerId}-legend`;
-        
+
         container.innerHTML = `
             <div class="interactive-chart">
-                <div class="chart-canvas-wrapper" style="height: ${this.height}px;">
+                <div class="chart-canvas-wrapper">
                     <canvas id="${canvasId}"></canvas>
                 </div>
                 ${this.showLegend ? `<div class="chart-legend" id="${legendId}"></div>` : ''}
@@ -73,11 +91,14 @@ class InteractiveChart {
                 label: name,
                 data: data,
                 borderColor: color,
-                backgroundColor: this.fill ? color + '20' : 'transparent',
+                backgroundColor: this.fill ? this.createGradientFill(color) : 'transparent',
                 borderWidth: 2,
-                pointRadius: 2,
-                pointHoverRadius: 5,
-                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#0D0D0D',
+                pointHoverBorderColor: color,
+                pointHoverBorderWidth: 2,
+                tension: 0.35,
                 fill: this.fill
             });
         });
@@ -96,18 +117,20 @@ class InteractiveChart {
     
     renderLegend() {
         if (!this.showLegend) return;
-        
+
         const legendContainer = document.getElementById(`${this.containerId}-legend`);
         if (!legendContainer) return;
-        
+
         const seriesNames = Object.keys(this.seriesColors);
-        if (seriesNames.length <= 1) {
+        // For bar charts, always show legend since x-axis labels are hidden
+        // For other charts, hide legend if only 1 series
+        if (seriesNames.length <= 1 && this.chartType !== 'bar') {
             legendContainer.innerHTML = '';
             return;
         }
-        
+
         legendContainer.innerHTML = seriesNames.map(name => `
-            <div class="legend-item ${this.selectedSeries.has(name) ? 'active' : ''}" 
+            <div class="legend-item ${this.selectedSeries.has(name) ? 'active' : ''}"
                  data-series="${name}">
                 <span class="legend-color" style="background: ${this.seriesColors[name]};"></span>
                 <span class="legend-label">${name}</span>
@@ -191,7 +214,7 @@ class InteractiveChart {
     
     getChartOptions(isTimeSeries) {
         const unit = this.unit;
-        
+
         const baseOptions = {
             responsive: true,
             maintainAspectRatio: false,
@@ -204,69 +227,118 @@ class InteractiveChart {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(26, 29, 38, 0.95)',
-                    titleColor: '#E4E7EB',
+                    backgroundColor: 'rgba(13, 13, 13, 0.98)',
+                    titleColor: '#FFFFFF',
+                    titleFont: { size: 13, weight: '600', family: 'Inter' },
                     bodyColor: '#9FA6B2',
-                    borderColor: '#2D3139',
+                    bodyFont: { size: 12, family: 'JetBrains Mono' },
+                    borderColor: 'rgba(119, 79, 248, 0.3)',
                     borderWidth: 1,
-                    padding: 12,
+                    padding: { top: 12, bottom: 12, left: 14, right: 14 },
+                    cornerRadius: 8,
                     displayColors: true,
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    boxPadding: 6,
+                    usePointStyle: true,
                     callbacks: {
+                        title: function(tooltipItems) {
+                            if (isTimeSeries && tooltipItems[0]) {
+                                const date = new Date(tooltipItems[0].parsed.x);
+                                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            }
+                            return tooltipItems[0]?.label || '';
+                        },
                         label: function(context) {
                             let value = context.parsed.y;
                             if (typeof value === 'number') {
-                                value = value.toFixed(2);
+                                value = value.toLocaleString('en-US', { maximumFractionDigits: 2 });
                             }
-                            return `${context.dataset.label}: ${value}${unit ? ' ' + unit : ''}`;
+                            return ` ${context.dataset.label}: ${value}${unit ? ' ' + unit : ''}`;
                         }
                     }
                 }
             },
             scales: {
                 x: {
+                    display: this.chartType !== 'bar', // Hide x-axis for bar charts - use legend instead
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        color: 'rgba(255, 255, 255, 0.04)',
+                        drawBorder: false
+                    },
+                    border: {
+                        display: false
                     },
                     ticks: {
-                        color: '#9FA6B2',
-                        maxTicksLimit: 8
+                        color: '#6B7280',
+                        font: { size: 11, family: 'Inter' },
+                        maxTicksLimit: 8,
+                        padding: 8
                     }
                 },
                 y: {
                     beginAtZero: true,
                     stacked: this.stacked,
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)'
+                        color: 'rgba(255, 255, 255, 0.04)',
+                        drawBorder: false
+                    },
+                    border: {
+                        display: false
                     },
                     ticks: {
-                        color: '#9FA6B2',
+                        color: '#6B7280',
+                        font: { size: 11, family: 'JetBrains Mono' },
+                        padding: 12,
                         callback: function(value) {
+                            if (value >= 1000) {
+                                return (value / 1000).toFixed(1) + 'k' + (unit ? ' ' + unit : '');
+                            }
                             return value + (unit ? ' ' + unit : '');
                         }
                     }
                 }
+            },
+            elements: {
+                line: {
+                    borderWidth: 2,
+                    tension: 0.35
+                },
+                point: {
+                    radius: 0,
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2,
+                    hoverBackgroundColor: '#0D0D0D'
+                }
             }
         };
-        
+
         if (isTimeSeries) {
             baseOptions.scales.x = {
                 type: 'time',
                 time: {
                     unit: 'minute',
                     displayFormats: {
-                        minute: 'HH:mm'
+                        minute: 'HH:mm',
+                        hour: 'HH:mm'
                     }
                 },
                 grid: {
-                    color: 'rgba(255, 255, 255, 0.05)'
+                    color: 'rgba(255, 255, 255, 0.04)',
+                    drawBorder: false
+                },
+                border: {
+                    display: false
                 },
                 ticks: {
-                    color: '#9FA6B2',
-                    maxTicksLimit: 8
+                    color: '#6B7280',
+                    font: { size: 11, family: 'Inter' },
+                    maxTicksLimit: 8,
+                    padding: 8
                 }
             };
         }
-        
+
         return baseOptions;
     }
     

@@ -25,6 +25,7 @@
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
     let timeRangePicker = null;
     let selectedService = null;
+    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -33,12 +34,16 @@
         console.log('Initializing Services page...');
 
         // Setup UI
+        setupTeamSelector();
         setupTimePicker();
         setupAutoRefresh();
         setupServicePanel();
 
         // Listen for time range changes
         eventBus.on(Events.TIME_RANGE_CHANGED, handleTimeRangeChange);
+
+        // Listen for team changes
+        eventBus.on('team:changed', handleTeamChange);
 
         // Load initial data
         await loadServices();
@@ -48,6 +53,25 @@
         if (autoRefreshEnabled) {
             startAutoRefresh();
         }
+    }
+
+    /**
+     * Setup team selector
+     */
+    function setupTeamSelector() {
+        if (window.TeamSelector) {
+            teamSelector = new TeamSelector({
+                containerId: 'teamSelectorContainer'
+            });
+        }
+    }
+
+    /**
+     * Handle team change
+     */
+    function handleTeamChange(team) {
+        console.log('[Services] Team changed:', team);
+        loadServices();
     }
 
     /**
@@ -137,7 +161,8 @@
      */
     async function loadServices() {
         try {
-            const data = await apiService.fetchServices();
+            // Use team-specific endpoint
+            const data = await apiService.fetchTeamServices();
             
             services = data.services || [];
 

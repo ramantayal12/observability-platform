@@ -10,12 +10,12 @@
 
     // DOM Elements
     const loginForm = document.getElementById('loginForm');
-    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const rememberMeCheckbox = document.getElementById('rememberMe');
     const loginBtn = document.getElementById('loginBtn');
     const loginAlert = document.getElementById('loginAlert');
-    const usernameError = document.getElementById('usernameError');
+    const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
 
     /**
@@ -34,8 +34,8 @@
         // Setup form handlers
         setupFormHandlers();
 
-        // Focus on username input
-        usernameInput.focus();
+        // Focus on email input
+        emailInput.focus();
     }
 
     /**
@@ -45,8 +45,8 @@
         loginForm.addEventListener('submit', handleLogin);
 
         // Clear errors on input
-        usernameInput.addEventListener('input', () => {
-            clearFieldError(usernameInput, usernameError);
+        emailInput.addEventListener('input', () => {
+            clearFieldError(emailInput, emailError);
             hideAlert();
         });
 
@@ -71,18 +71,21 @@
 
         // Clear previous errors
         hideAlert();
-        clearFieldError(usernameInput, usernameError);
+        clearFieldError(emailInput, emailError);
         clearFieldError(passwordInput, passwordError);
 
         // Validate inputs
-        const username = usernameInput.value.trim();
+        const email = emailInput.value.trim();
         const password = passwordInput.value;
         const rememberMe = rememberMeCheckbox.checked;
 
         let hasError = false;
 
-        if (!username) {
-            showFieldError(usernameInput, usernameError, 'Username is required');
+        if (!email) {
+            showFieldError(emailInput, emailError, 'Email is required');
+            hasError = true;
+        } else if (!isValidEmail(email)) {
+            showFieldError(emailInput, emailError, 'Please enter a valid email');
             hasError = true;
         }
 
@@ -100,11 +103,11 @@
 
         try {
             // Authenticate user
-            const result = await authService.authenticate(username, password);
+            const result = await authService.authenticate(email, password);
 
             if (result.success) {
-                // Save session
-                authService.saveSession(result.session, result.user, rememberMe);
+                // Save session with full auth data
+                authService.saveSession(result.session, result.user, result, rememberMe);
 
                 // Show success message
                 showAlert('Login successful! Redirecting...', 'success');
@@ -125,6 +128,14 @@
         } finally {
             setLoading(false);
         }
+    }
+
+    /**
+     * Validate email format
+     */
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     }
 
     /**

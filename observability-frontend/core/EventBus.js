@@ -200,3 +200,7 @@ const Events = {
 
 Object.freeze(Events);
 
+// Expose to window for global access
+window.EventBus = EventBus;
+window.eventBus = eventBus;
+window.Events = Events;

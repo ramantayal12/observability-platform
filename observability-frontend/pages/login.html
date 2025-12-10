@@ -4,60 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ObserveX - Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/components.css">
     <style>
         .login-container {
             min-height: 100vh;
             display: flex;
+            background: var(--bg-primary);
+        }
+
+        .login-branding {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px;
+            background: linear-gradient(135deg, #0D0D0D 0%, #1A1A1A 100%);
+            border-right: 1px solid var(--border-primary);
+        }
+
+        .login-branding-content {
+            max-width: 480px;
+        }
+
+        .branding-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+        }
+
+        .branding-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg-primary);
-            padding: 20px;
+            color: #000;
+        }
+
+        .branding-logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+        }
+
+        .branding-headline {
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 16px;
+            letter-spacing: -0.03em;
+        }
+
+        .branding-headline span {
+            color: var(--primary);
+        }
+
+        .branding-description {
+            font-size: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 48px;
+        }
+
+        .branding-features {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .branding-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .branding-feature-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+        }
+
+        .login-form-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
         }
 
         .login-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-primary);
-            border-radius: 12px;
-            padding: 40px;
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            max-width: 380px;
         }
 
         .login-header {
-            text-align: center;
             margin-bottom: 32px;
         }
 
-        .login-logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .login-logo-icon {
-            width: 48px;
-            height: 48px;
-            background: var(--primary);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-
-        .login-logo-text {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
         .login-title {
-            font-size: 20px;
+            font-size: 24px;
             font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 8px;
@@ -65,7 +121,7 @@
 
         .login-subtitle {
             font-size: 14px;
-            color: var(--text-secondary);
+            color: var(--text-tertiary);
         }
 
         .login-form {
@@ -77,33 +133,36 @@
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .form-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .form-input {
-            padding: 12px 16px;
+            padding: 12px 14px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-primary);
-            border-radius: 8px;
+            border-radius: 6px;
             color: var(--text-primary);
             font-size: 14px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: var(--font-family);
+            transition: border-color 0.15s, box-shadow 0.15s;
         }
 
         .form-input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(119, 79, 248, 0.2);
+            box-shadow: 0 0 0 2px rgba(28, 231, 131, 0.15);
         }
 
         .form-input::placeholder {
-            color: var(--text-tertiary);
+            color: var(--text-muted);
         }
 
         .form-input.error {
@@ -121,20 +180,21 @@
         }
 
         .login-btn {
-            padding: 14px 24px;
+            padding: 12px 24px;
             background: var(--primary);
-            color: white;
+            color: #000;
             border: none;
-            border-radius: 8px;
-            font-size: 15px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: all 0.15s;
             margin-top: 8px;
         }
 
         .login-btn:hover {
             background: var(--primary-hover);
+            box-shadow: 0 0 20px rgba(28, 231, 131, 0.3);
         }
 
         .login-btn:active {
@@ -148,28 +208,30 @@
 
         .login-footer {
             margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-primary);
             text-align: center;
-            font-size: 13px;
-            color: var(--text-tertiary);
+            font-size: 12px;
+            color: var(--text-muted);
         }
 
         .login-alert {
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 12px 14px;
+            border-radius: 6px;
+            font-size: 13px;
             display: none;
             margin-bottom: 16px;
         }
 
         .login-alert.error {
-            background: rgba(240, 68, 56, 0.1);
+            background: rgba(255, 82, 82, 0.1);
             border: 1px solid var(--error);
             color: var(--error);
             display: block;
         }
 
         .login-alert.success {
-            background: rgba(18, 183, 106, 0.1);
+            background: rgba(28, 231, 131, 0.1);
             border: 1px solid var(--success);
             color: var(--success);
             display: block;
@@ -188,18 +250,18 @@
         }
 
         .remember-me label {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
             cursor: pointer;
         }
 
         .loading-spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
             border-radius: 50%;
-            border-top-color: white;
+            border-top-color: #000;
             animation: spin 0.8s linear infinite;
             margin-right: 8px;
         }
@@ -207,70 +269,117 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        @media (max-width: 900px) {
+            .login-branding {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="login-logo">
-                    <div class="login-logo-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <!-- Branding Section -->
+        <div class="login-branding">
+            <div class="login-branding-content">
+                <div class="branding-logo">
+                    <div class="branding-logo-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                         </svg>
                     </div>
-                    <span class="login-logo-text">ObserveX</span>
+                    <span class="branding-logo-text">ObserveX</span>
                 </div>
-                <h1 class="login-title">Welcome back</h1>
-                <p class="login-subtitle">Sign in to your account to continue</p>
+                <h1 class="branding-headline">
+                    Enterprise-grade <span>observability</span> for modern applications
+                </h1>
+                <p class="branding-description">
+                    Monitor, debug, and optimize your entire stack with real-time metrics, distributed tracing, and intelligent alerting.
+                </p>
+                <div class="branding-features">
+                    <div class="branding-feature">
+                        <svg class="branding-feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Real-time metrics and dashboards</span>
+                    </div>
+                    <div class="branding-feature">
+                        <svg class="branding-feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Distributed tracing across services</span>
+                    </div>
+                    <div class="branding-feature">
+                        <svg class="branding-feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Intelligent alerting and anomaly detection</span>
+                    </div>
+                    <div class="branding-feature">
+                        <svg class="branding-feature-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Multi-tenant team isolation</span>
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div id="loginAlert" class="login-alert"></div>
-
-            <form id="loginForm" class="login-form">
-                <div class="form-group">
-                    <label class="form-label" for="username">Username</label>
-                    <input 
-                        type="text" 
-                        id="username" 
-                        class="form-input" 
-                        placeholder="Enter your username"
-                        autocomplete="username"
-                        required
-                    >
-                    <span class="form-error" id="usernameError">Username is required</span>
+        <!-- Login Form Section -->
+        <div class="login-form-section">
+            <div class="login-card">
+                <div class="login-header">
+                    <h2 class="login-title">Sign in to ObserveX</h2>
+                    <p class="login-subtitle">Enter your credentials to access your dashboard</p>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="password">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        class="form-input" 
-                        placeholder="Enter your password"
-                        autocomplete="current-password"
-                        required
-                    >
-                    <span class="form-error" id="passwordError">Password is required</span>
+                <div id="loginAlert" class="login-alert"></div>
+
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email Address</label>
+                        <input
+                            type="email"
+                            id="email"
+                            class="form-input"
+                            placeholder="you@company.com"
+                            autocomplete="email"
+                            required
+                        >
+                        <span class="form-error" id="emailError">Email is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input
+                            type="password"
+                            id="password"
+                            class="form-input"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <span class="form-error" id="passwordError">Password is required</span>
+                    </div>
+
+                    <div class="remember-me">
+                        <input type="checkbox" id="rememberMe">
+                        <label for="rememberMe">Keep me signed in</label>
+                    </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <p>Demo: demo@observex.io / any password</p>
                 </div>
-
-                <div class="remember-me">
-                    <input type="checkbox" id="rememberMe">
-                    <label for="rememberMe">Remember me</label>
-                </div>
-
-                <button type="submit" class="login-btn" id="loginBtn">
-                    Sign In
-                </button>
-            </form>
-
-            <div class="login-footer">
-                <p>Default credentials: admin / admin</p>
             </div>
         </div>
     </div>
 
+    <script src="../config/constants.js"></script>
     <script src="../services/AuthService.js"></script>
     <script src="../assets/js/login.js"></script>
 </body>

@@ -7,7 +7,11 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "services", indexes = {
-    @Index(name = "idx_services_name", columnList = "name", unique = true)
+    @Index(name = "idx_services_org", columnList = "organization_id"),
+    @Index(name = "idx_services_team", columnList = "team_id"),
+    @Index(name = "idx_services_name", columnList = "name")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_service_team_name", columnNames = {"team_id", "name"})
 })
 @Data
 @Builder
@@ -19,7 +23,13 @@ public class ServiceEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100, unique = true)
+    @Column(name = "organization_id", nullable = false)
+    private Long organizationId;
+
+    @Column(name = "team_id", nullable = false)
+    private Long teamId;
+
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(length = 20)
