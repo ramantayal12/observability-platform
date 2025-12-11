@@ -6,29 +6,22 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const apiService = ApiService.getInstance();
-    const notificationManager = NotificationManager.getInstance();
-    const sharedDataService = SharedDataService.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, apiService, notificationManager, sharedDataService } = PageUtils.getServices();
+
+    // Use PageUtils for common helper functions (declare early for use throughout)
+    const parseEndpoint = PageUtils.parseEndpoint;
+    const escapeHtml = PageUtils.escapeHtml;
+    const getTimeSince = PageUtils.getTimeSince;
 
     // Page state
-    let autoRefreshInterval = null;
     let charts = {};
     let sparklineCharts = {};
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
-    let timeRangePicker = null;
-
-    // Team selector instance
-    let teamSelector = null;
+    let autoRefresh = null;
 
     /**
      * Initialize the page
@@ -36,10 +29,16 @@
     async function init() {
         console.log('Initializing Overview page...');
 
-        // Setup UI
-        setupTeamSelector();
-        setupTimePicker();
-        setupAutoRefresh();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+        const timePicker = PageUtils.setupTimePicker();
+        if (timePicker) {
+            currentTimeRange = timePicker.getRange();
+        }
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({ onRefresh: loadOverview });
+
         setupCharts();
 
         // Listen for time range changes
@@ -54,18 +53,7 @@
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
-            startAutoRefresh();
-        }
-    }
-
-    /**
-     * Setup team selector
-     */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
+            autoRefresh.start();
         }
     }
 
@@ -81,85 +69,12 @@
     }
 
     /**
-     * Setup auto-refresh and manual refresh
-     */
-    function setupAutoRefresh() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadOverview();
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
-
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
-
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                stopAutoRefresh();
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
-    }
-
-    /**
-     * Setup time picker for the overview page
-     */
-    function setupTimePicker() {
-        timeRangePicker = new TimeRangePicker({
-            buttonId: 'timePickerBtn',
-            dropdownId: 'timePickerDropdown',
-            labelId: 'timePickerLabel'
-        });
-
-        // Set initial time range
-        currentTimeRange = timeRangePicker.getRange();
-    }
-
-    /**
      * Handle time range change
      */
     function handleTimeRangeChange(data) {
         console.log('[Overview] Time range changed:', data);
         currentTimeRange = data.range;
         loadOverview();
-    }
-
-    /**
-     * Start auto-refresh
-     */
-    function startAutoRefresh() {
-        stopAutoRefresh();
-        autoRefreshInterval = setInterval(() => {
-            loadOverview();
-        }, 30000); // 30 seconds
-    }
-
-    /**
-     * Stop auto-refresh
-     */
-    function stopAutoRefresh() {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-        }
     }
 
     /**
@@ -232,11 +147,56 @@
             // Update recent activity
             updateRecentActivity(data.recentActivity || []);
 
+            // Update service health grid
+            updateServiceHealthGrid(data.services || data.apiEndpoints || []);
+
         } catch (error) {
             console.error('[Overview] Error loading overview:', error);
             notificationManager.error('Failed to load overview data');
         }
     }
+
+    /**
+     * Update service health grid
+     */
+    function updateServiceHealthGrid(services) {
+        const grid = document.getElementById('serviceHealthGrid');
+        if (!grid) return;
+
+        if (!services || services.length === 0) {
+            grid.innerHTML = '<div class="service-health-loading">No services available</div>';
+            return;
+        }
+
+        // Take top 8 services for the grid
+        const topServices = services.slice(0, 8);
+
+        grid.innerHTML = topServices.map(service => {
+            const name = service.endpoint || service.name || service.serviceName || 'Unknown';
+            const latency = service.avgLatency || service.latency || 0;
+            const errorRate = service.errorRate || 0;
+
+            // Determine health status
+            let status = 'healthy';
+            if (errorRate > 5 || latency > 500) {
+                status = 'critical';
+            } else if (errorRate > 1 || latency > 200) {
+                status = 'degraded';
+            }
+
+            return `
+                <div class="service-health-card" onclick="window.location.href='services.html'">
+                    <div class="service-health-indicator ${status}"></div>
+                    <div class="service-health-info">
+                        <div class="service-health-name">${escapeHtml(name)}</div>
+                        <div class="service-health-latency">${latency.toFixed(0)}ms avg</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // escapeHtml is now imported from PageUtils at the bottom of the file
 
     /**
      * Update stats cards
@@ -547,17 +507,6 @@
     }
 
     /**
-     * Parse endpoint string into method and path
-     */
-    function parseEndpoint(endpoint) {
-        const parts = endpoint.split(' ');
-        if (parts.length >= 2) {
-            return { method: parts[0], path: parts.slice(1).join(' ') };
-        }
-        return { method: 'GET', path: endpoint };
-    }
-
-    /**
      * Update recent activity
      */
     function updateRecentActivity(activities) {
@@ -598,17 +547,7 @@
         return icons[type] || '📝';
     }
 
-    /**
-     * Get time since timestamp
-     */
-    function getTimeSince(timestamp) {
-        const seconds = Math.floor((Date.now() - timestamp) / 1000);
-        
-        if (seconds < 60) return `${seconds}s ago`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        return `${Math.floor(seconds / 86400)}d ago`;
-    }
+    // getTimeSince is now imported from PageUtils above
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -619,7 +558,7 @@
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
-        stopAutoRefresh();
+        if (autoRefresh) autoRefresh.cleanup();
     });
 
 })();

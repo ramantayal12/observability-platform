@@ -6,18 +6,11 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const apiService = ApiService.getInstance();
-    const notificationManager = NotificationManager.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, apiService, notificationManager } = PageUtils.getServices();
 
     // Page state
     let currentFilters = {
@@ -30,11 +23,10 @@
         containers: [],
         timeRange: 3600000 // 1 hour
     };
-    let autoRefreshInterval = null;
     let allTraces = [];
     let filteredTraces = [];
-    let timeRangePicker = null;
     let selectedTraceId = null;
+    let autoRefresh = null;
 
     // FacetFilter instances
     let durationFacet = null;
@@ -43,7 +35,6 @@
     let operationFacet = null;
     let podFacet = null;
     let containerFacet = null;
-    let teamSelector = null;
 
     /**
      * Initialize the page
@@ -51,10 +42,16 @@
     async function init() {
         console.log('Initializing Traces page (New Relic style)...');
 
-        // Setup UI
-        setupTeamSelector();
-        setupTimePicker();
-        setupAutoRefresh();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+        const timePicker = PageUtils.setupTimePicker();
+        if (timePicker) {
+            currentFilters.timeRange = timePicker.getRange();
+        }
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({ onRefresh: loadTraces });
+
         setupQueryBar();
         setupFacetFilters();
         setupTracePanel();
@@ -71,18 +68,7 @@
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
-            startAutoRefresh();
-        }
-    }
-
-    /**
-     * Setup team selector
-     */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
+            autoRefresh.start();
         }
     }
 
@@ -95,85 +81,12 @@
     }
 
     /**
-     * Setup time picker
-     */
-    function setupTimePicker() {
-        timeRangePicker = new TimeRangePicker({
-            buttonId: 'timePickerBtn',
-            dropdownId: 'timePickerDropdown',
-            labelId: 'timePickerLabel'
-        });
-
-        // Set initial time range
-        currentFilters.timeRange = timeRangePicker.getRange();
-    }
-
-    /**
      * Handle time range change
      */
     function handleTimeRangeChange(data) {
         console.log('[Traces] Time range changed:', data);
         currentFilters.timeRange = data.range;
         loadTraces();
-    }
-
-    /**
-     * Setup auto-refresh and manual refresh
-     */
-    function setupAutoRefresh() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadTraces();
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
-
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
-
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                stopAutoRefresh();
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
-    }
-
-    /**
-     * Start auto-refresh
-     */
-    function startAutoRefresh() {
-        stopAutoRefresh();
-        autoRefreshInterval = setInterval(() => {
-            loadTraces();
-        }, 30000);
-    }
-
-    /**
-     * Stop auto-refresh
-     */
-    function stopAutoRefresh() {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-        }
     }
 
     /**
@@ -634,15 +547,7 @@
         });
     }
 
-    /**
-     * Get color based on duration
-     */
-    function getDurationColor(duration) {
-        if (duration < 50) return 'var(--success)';
-        if (duration < 100) return 'var(--info)';
-        if (duration < 500) return 'var(--warning)';
-        return 'var(--error)';
-    }
+    // getDurationColor is now imported from PageUtils at the bottom of the file
 
     /**
      * Render traces list
@@ -701,9 +606,17 @@
     }
 
     /**
-     * View trace details
+     * View trace details - Navigate to dedicated trace detail page
      */
-    async function viewTrace(traceId) {
+    function viewTrace(traceId) {
+        // Navigate to the dedicated trace detail page
+        window.location.href = `trace-detail.html?id=${encodeURIComponent(traceId)}`;
+    }
+
+    /**
+     * View trace details in panel (legacy - kept for quick preview)
+     */
+    async function viewTraceInPanel(traceId) {
         try {
             selectedTraceId = traceId;
 
@@ -813,38 +726,11 @@
         panel.classList.add('active');
     }
 
-    /**
-     * Format timestamp
-     */
-    function formatTimestamp(timestamp) {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        });
-    }
-
-    /**
-     * Escape HTML
-     */
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    /**
-     * Calculate percentile
-     */
-    function calculatePercentile(values, percentile) {
-        if (values.length === 0) return 0;
-
-        const sorted = [...values].sort((a, b) => a - b);
-        const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-        return sorted[index] || 0;
-    }
+    // Use PageUtils for common helper functions
+    const formatTimestamp = PageUtils.formatTimestamp;
+    const escapeHtml = PageUtils.escapeHtml;
+    const calculatePercentile = PageUtils.calculatePercentile;
+    const getDurationColor = PageUtils.getDurationColor;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -855,7 +741,7 @@
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
-        stopAutoRefresh();
+        if (autoRefresh) autoRefresh.cleanup();
     });
 
 })();

@@ -28,7 +28,15 @@ Backend runs on `http://localhost:8080`
 cd observability-frontend
 python3 -m http.server 3000
 ```
-Open `http://localhost:3000`
+Open `http://localhost:3000/pages/login.html`
+
+### 5. Demo Credentials
+
+| Email | Password | Description |
+|-------|----------|-------------|
+| `demo@observex.io` | any password | Demo user with access to all teams |
+
+After login, you can switch between teams using the team selector in the top navigation.
 
 ## Project Structure
 

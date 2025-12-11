@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Services - ObserveX</title>
+    <title>Trace Detail - ObserveX</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/components.css">
-    <link rel="stylesheet" href="../assets/css/pages.css">
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -27,7 +26,6 @@
 
         <nav class="sidebar-nav">
             <div class="nav-section">Observe</div>
-
             <a href="index.html" class="nav-link" data-tooltip="Overview">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -37,7 +35,6 @@
                 </svg>
                 <span class="nav-text">Overview</span>
             </a>
-
             <a href="dashboards.html" class="nav-link" data-tooltip="Dashboards">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -47,7 +44,6 @@
                 </svg>
                 <span class="nav-text">Dashboards</span>
             </a>
-
             <a href="metrics.html" class="nav-link" data-tooltip="Metrics">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M3 15l4-4 3 3 7-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -55,15 +51,13 @@
                 </svg>
                 <span class="nav-text">Metrics</span>
             </a>
-
             <a href="logs.html" class="nav-link" data-tooltip="Logs">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span class="nav-text">Logs</span>
             </a>
-
-            <a href="traces.html" class="nav-link" data-tooltip="Traces">
+            <a href="traces.html" class="nav-link active" data-tooltip="Traces">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <circle cx="5" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
                     <circle cx="15" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/>
@@ -71,10 +65,8 @@
                 </svg>
                 <span class="nav-text">Traces</span>
             </a>
-
             <div class="nav-section">Manage</div>
-
-            <a href="services.html" class="nav-link active" data-tooltip="Services">
+            <a href="services.html" class="nav-link" data-tooltip="Services">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
                     <rect x="12" y="3" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -83,148 +75,58 @@
                 </svg>
                 <span class="nav-text">Services</span>
             </a>
-
             <a href="alerts.html" class="nav-link" data-tooltip="Alerts">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
                     <path d="M10 2a6 6 0 016 6c0 7 3 9 3 9H1s3-2 3-9a6 6 0 016-6z" stroke="currentColor" stroke-width="1.5"/>
                     <path d="M9 17v1a2 2 0 104 0v-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
                 <span class="nav-text">Alerts</span>
-                <span class="nav-badge" id="alertBadge" style="display: none;">0</span>
             </a>
         </nav>
-
-        <div class="sidebar-footer" id="sidebarFooter">
-            <!-- Will be populated by auth state -->
-        </div>
+        <div class="sidebar-footer" id="sidebarFooter"></div>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Top Bar -->
+        <!-- Topbar -->
         <header class="topbar">
             <div class="topbar-left">
-                <!-- Team Selector -->
                 <div id="teamSelectorContainer"></div>
-
-                <!-- Breadcrumb -->
                 <nav class="breadcrumb">
                     <a href="index.html" class="breadcrumb-item">Home</a>
                     <span class="breadcrumb-separator">/</span>
-                    <span class="breadcrumb-current">Services</span>
+                    <a href="traces.html" class="breadcrumb-item">Traces</a>
+                    <span class="breadcrumb-separator">/</span>
+                    <span class="breadcrumb-current" id="traceIdBreadcrumb">Trace Detail</span>
                 </nav>
             </div>
-
             <div class="topbar-right">
-                <!-- Time Picker -->
-                <div class="time-picker">
-                    <button class="btn btn-secondary btn-sm" id="timePickerBtn">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zm0 11a5 5 0 110-10 5 5 0 010 10zm.5-8H7.5v4l3.5 2 .5-1-3-1.5V5z"/>
-                        </svg>
-                        <span id="timePickerLabel">Last 1 hour</span>
-                    </button>
-                    <div class="time-picker-dropdown" id="timePickerDropdown">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-
-                <!-- Manual Refresh -->
-                <button class="btn btn-icon btn-sm" id="refreshBtn" title="Refresh Data">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M13.65 2.35A8 8 0 1016 8h-2a6 6 0 11-1.76-4.24l-2.24.24.24 2.24L14.48 2l-.83.35z"/>
+                <button class="btn btn-secondary btn-sm" id="copyTraceIdBtn">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/>
                     </svg>
+                    Copy Trace ID
                 </button>
-
-                <!-- Auto Refresh Toggle -->
-                <button class="btn btn-icon btn-sm" id="autoRefreshBtn" title="Toggle Auto Refresh (30s)">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 2a6 6 0 00-6 6h2a4 4 0 014-4V2zm0 12a6 6 0 006-6h-2a4 4 0 01-4 4v2z"/>
+                <button class="btn btn-secondary btn-sm" id="viewLogsBtn">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
+                    View Logs
                 </button>
+                <a href="traces.html" class="btn btn-secondary btn-sm">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                    </svg>
+                    Back to Traces
+                </a>
             </div>
         </header>
 
         <!-- Page Content -->
-        <div class="page-content">
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Total Services</span>
-                    </div>
-                    <div class="stat-value" id="totalServices">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Healthy</span>
-                    </div>
-                    <div class="stat-value stat-success" id="healthyServices">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Degraded</span>
-                    </div>
-                    <div class="stat-value stat-warning" id="degradedServices">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">Down</span>
-                    </div>
-                    <div class="stat-value stat-error" id="downServices">--</div>
-                </div>
-            </div>
-
-            <!-- Services Grid -->
-            <div class="services-grid" id="servicesGrid">
-                <div class="text-center" style="grid-column: 1/-1; padding: 48px;">
-                    Loading services...
-                </div>
-            </div>
-        </div>
-
-        <!-- Service Detail Panel (Slide-in) -->
-        <div class="service-detail-panel" id="serviceDetailPanel">
-            <div class="panel-header">
-                <div class="panel-title">
-                    <span class="service-name" id="panelServiceName">Service</span>
-                    <span class="service-status-badge" id="panelServiceStatus">Healthy</span>
-                </div>
-                <button class="panel-close" id="closeServicePanel">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="panel-content">
-                <!-- Pod Summary -->
-                <div class="pod-summary" id="podSummary">
-                    <div class="pod-stat running">
-                        <span class="pod-stat-value" id="runningPods">0</span>
-                        <span class="pod-stat-label">Running</span>
-                    </div>
-                    <div class="pod-stat starting">
-                        <span class="pod-stat-value" id="startingPods">0</span>
-                        <span class="pod-stat-label">Starting</span>
-                    </div>
-                    <div class="pod-stat degraded">
-                        <span class="pod-stat-value" id="degradedPods">0</span>
-                        <span class="pod-stat-label">Degraded</span>
-                    </div>
-                    <div class="pod-stat terminated">
-                        <span class="pod-stat-value" id="terminatedPods">0</span>
-                        <span class="pod-stat-label">Terminated</span>
-                    </div>
-                </div>
-
-                <!-- Pods List -->
-                <div class="pods-section">
-                    <h4 class="section-title">Pods</h4>
-                    <div class="pods-list" id="podsList">
-                        <!-- Pods will be rendered here -->
-                    </div>
-                </div>
+        <div class="page-content trace-detail-page" id="traceDetailPage">
+            <div class="trace-detail-loading" id="traceLoading">
+                <div class="loading-spinner"></div>
+                <span>Loading trace...</span>
             </div>
         </div>
     </main>
@@ -240,15 +142,10 @@
     <script src="../services/TenantService.js"></script>
     <script src="../components/BaseComponent.js"></script>
     <script src="../components/NotificationManager.js"></script>
-    <script src="../components/TimeRangePicker.js"></script>
     <script src="../components/TeamSelector.js"></script>
     <script src="../components/Sidebar.js"></script>
-    <script src="../components/Topbar.js"></script>
     <script src="../components/AuthUI.js"></script>
-    <script src="../components/CommandPalette.js"></script>
-
-    <!-- Page Scripts -->
-    <script src="../assets/js/services.js"></script>
+    <script src="../assets/js/trace-detail.js"></script>
 </body>
 </html>
 

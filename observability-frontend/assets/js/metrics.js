@@ -6,18 +6,11 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const apiService = ApiService.getInstance();
-    const notificationManager = NotificationManager.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, apiService, notificationManager } = PageUtils.getServices();
 
     // Page state
     let charts = {};
@@ -26,9 +19,7 @@
         metric: '',
         timeRange: 3600000 // 1 hour
     };
-    let autoRefreshInterval = null;
-    let timeRangePicker = null;
-    let teamSelector = null;
+    let autoRefresh = null;
 
     /**
      * Initialize the page
@@ -36,10 +27,16 @@
     async function init() {
         console.log('Initializing Metrics page...');
 
-        // Setup UI
-        setupTeamSelector();
-        setupTimePicker();
-        setupAutoRefresh();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+        const timePicker = PageUtils.setupTimePicker();
+        if (timePicker) {
+            currentFilters.timeRange = timePicker.getRange();
+        }
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({ onRefresh: loadMetrics });
+
         setupFilters();
         initializeCharts();
 
@@ -55,18 +52,7 @@
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
-            startAutoRefresh();
-        }
-    }
-
-    /**
-     * Setup team selector
-     */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
+            autoRefresh.start();
         }
     }
 
@@ -82,85 +68,12 @@
     }
 
     /**
-     * Setup time picker
-     */
-    function setupTimePicker() {
-        timeRangePicker = new TimeRangePicker({
-            buttonId: 'timePickerBtn',
-            dropdownId: 'timePickerDropdown',
-            labelId: 'timePickerLabel'
-        });
-
-        // Set initial time range
-        currentFilters.timeRange = timeRangePicker.getRange();
-    }
-
-    /**
      * Handle time range change
      */
     function handleTimeRangeChange(data) {
         console.log('[Metrics] Time range changed:', data);
         currentFilters.timeRange = data.range;
         loadMetrics();
-    }
-
-    /**
-     * Setup auto-refresh and manual refresh
-     */
-    function setupAutoRefresh() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadMetrics();
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
-
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
-
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                stopAutoRefresh();
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
-    }
-
-    /**
-     * Start auto-refresh
-     */
-    function startAutoRefresh() {
-        stopAutoRefresh(); // Clear any existing interval
-        autoRefreshInterval = setInterval(() => {
-            loadMetrics();
-        }, 30000); // 30 seconds
-    }
-
-    /**
-     * Stop auto-refresh
-     */
-    function stopAutoRefresh() {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-        }
     }
 
     /**
@@ -440,17 +353,7 @@
         });
     }
 
-    /**
-     * Parse endpoint string into method and path
-     */
-    function parseEndpoint(endpoint) {
-        if (!endpoint) return { method: 'GET', path: '/unknown' };
-        const parts = endpoint.split(' ');
-        if (parts.length >= 2) {
-            return { method: parts[0], path: parts.slice(1).join(' ') };
-        }
-        return { method: 'GET', path: endpoint };
-    }
+    // parseEndpoint is now imported from PageUtils at the bottom of the file
 
     /**
      * Group time series data by a field for multi-line charts
@@ -523,16 +426,9 @@
         serviceFilter.value = currentValue;
     }
 
-    /**
-     * Calculate percentile
-     */
-    function calculatePercentile(values, percentile) {
-        if (values.length === 0) return 0;
-        
-        const sorted = [...values].sort((a, b) => a - b);
-        const index = Math.ceil((percentile / 100) * sorted.length) - 1;
-        return sorted[index] || 0;
-    }
+    // Use PageUtils for common helper functions
+    const calculatePercentile = PageUtils.calculatePercentile;
+    const parseEndpoint = PageUtils.parseEndpoint;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -543,7 +439,7 @@
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
-        stopAutoRefresh();
+        if (autoRefresh) autoRefresh.cleanup();
         Object.values(charts).forEach(chart => chart && chart.destroy && chart.destroy());
     });
 

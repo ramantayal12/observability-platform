@@ -6,24 +6,17 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const apiService = ApiService.getInstance();
-    const notificationManager = NotificationManager.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, apiService, notificationManager } = PageUtils.getServices();
 
     // Page state
     let dashboards = [];
     let currentDashboard = null;
     let currentView = 'list'; // 'list' or 'dashboard'
-    let teamSelector = null;
+    let autoRefresh = null;
 
     /**
      * Initialize the page
@@ -34,33 +27,30 @@
         // Load dashboards from localStorage
         loadDashboards();
 
-        // Setup UI
-        setupTeamSelector();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({
+            onRefresh: async () => {
+                await loadApiDetails();
+                if (currentDashboard) {
+                    loadDashboard(currentDashboard.id);
+                }
+            }
+        });
+
         setupNewDashboardButton();
         setupBackButton();
         setupDashboardActions();
         setupModals();
-        setupRefreshButtons();
 
         // Listen for team changes
-        if (window.eventBus) {
-            eventBus.on('team:changed', handleTeamChange);
-        }
+        eventBus.on('team:changed', handleTeamChange);
 
         // Render dashboards list
         renderDashboardsList();
         showListView();
-    }
-
-    /**
-     * Setup team selector
-     */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
-        }
     }
 
     /**
@@ -70,46 +60,6 @@
         console.log('[Dashboards] Team changed:', team);
         loadDashboards();
         renderDashboardsList();
-    }
-
-    /**
-     * Setup refresh buttons
-     */
-    function setupRefreshButtons() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadApiDetails();
-                if (currentDashboard) {
-                    loadDashboard(currentDashboard.id);
-                }
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
-
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
-
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
     }
 
     /**
@@ -661,29 +611,10 @@
         }
     }
 
-    /**
-     * Escape HTML
-     */
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
-    }
-
-    /**
-     * Format date
-     */
-    function formatDate(timestamp) {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diff = now - date;
-
-        if (diff < 60000) return 'Just now';
-        if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-        if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-        if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-        return date.toLocaleDateString();
-    }
+    // Use PageUtils for common helper functions
+    const escapeHtml = PageUtils.escapeHtml;
+    const formatDate = PageUtils.formatDate;
+    const generateHexId = PageUtils.generateHexId;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -691,6 +622,11 @@
     } else {
         init();
     }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (autoRefresh) autoRefresh.cleanup();
+    });
 
 })();
 

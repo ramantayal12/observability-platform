@@ -514,18 +514,319 @@ body {
     position: absolute;
     top: calc(100% + var(--space-xs));
     right: 0;
-    min-width: 200px;
+    min-width: 420px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-primary);
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-lg);
     box-shadow: var(--shadow-lg);
-    padding: var(--space-xs);
+    padding: 0;
     display: none;
     z-index: 1000;
+    overflow: hidden;
 }
 
 .time-picker-dropdown.active {
     display: block;
+    animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Time Picker Panel */
+.time-picker-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Time Picker Tabs */
+.time-picker-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.time-picker-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.time-picker-tab:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.time-picker-tab.active {
+    background: var(--primary);
+    color: white;
+}
+
+.time-picker-tab svg {
+    opacity: 0.8;
+}
+
+/* Time Picker Content */
+.time-picker-content {
+    padding: 16px;
+}
+
+.time-picker-pane {
+    display: none;
+}
+
+.time-picker-pane.active {
+    display: block;
+}
+
+/* Preset Grid */
+.time-presets-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.preset-category {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preset-category-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.preset-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.preset-btn {
+    padding: 6px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.preset-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* Custom Relative Time */
+.custom-relative {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.custom-relative-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.custom-relative-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.custom-relative-inputs span {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.custom-relative-value {
+    width: 60px;
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    text-align: center;
+}
+
+.custom-relative-value:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(28, 231, 131, 0.15);
+}
+
+.custom-relative-unit {
+    padding: 6px 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.custom-relative-unit:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Absolute Time Inputs */
+.absolute-time-inputs {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.absolute-time-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.absolute-time-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.absolute-time-input {
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.absolute-time-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(28, 231, 131, 0.15);
+}
+
+.absolute-time-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}
+
+.absolute-time-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 8px;
+    color: var(--text-muted);
+}
+
+/* Quick Ranges */
+.absolute-quick-ranges {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.quick-ranges-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+.quick-ranges-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.quick-range-btn {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.quick-range-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+/* Time Picker Footer */
+.time-picker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-primary);
+}
+
+.time-picker-current {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.current-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.current-value {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.time-picker-actions {
+    display: flex;
+    gap: 8px;
 }
 
 /* ==================== Buttons ==================== */

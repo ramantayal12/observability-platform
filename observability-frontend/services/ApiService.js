@@ -406,6 +406,13 @@ class ApiService {
      */
     async fetchTrace(traceId) {
         try {
+            const teamId = this.getCurrentTeamId();
+            if (teamId) {
+                // Use team-based endpoint
+                const data = await this.request(`/api/teams/${teamId}/data/traces/${traceId}`);
+                return data;
+            }
+            // Fallback to mock endpoint
             const data = await this.request(`${this.endpoints.TRACES}/${traceId}`);
             return data;
         } catch (error) {
@@ -578,17 +585,22 @@ class ApiService {
             return this.fetchLogs(filters);
         }
 
-        stateManager.set('loading.logs', true);
-        stateManager.set('errors.logs', null);
+        // Only set loading state for initial load (offset = 0)
+        const isInitialLoad = !filters.offset || filters.offset === 0;
+        if (isInitialLoad) {
+            stateManager.set('loading.logs', true);
+            stateManager.set('errors.logs', null);
+        }
 
         try {
-            const endTime = Date.now();
-            const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
+            const endTime = filters.endTime || Date.now();
+            const startTime = filters.startTime || (filters.timeRange ? endTime - filters.timeRange : endTime - 3600000);
 
             const params = {
                 startTime,
                 endTime,
                 limit: filters.limit || 100,
+                offset: filters.offset || 0,
                 ...this.buildFilterParams(filters)
             };
 
@@ -598,8 +610,12 @@ class ApiService {
             });
 
             const logsData = data.success && data.data ? data.data : data;
-            stateManager.set('cache.logs', logsData);
-            eventBus.emit(Events.DATA_LOADED, { type: 'logs', data: logsData });
+
+            // Only cache and emit for initial load
+            if (isInitialLoad) {
+                stateManager.set('cache.logs', logsData);
+                eventBus.emit(Events.DATA_LOADED, { type: 'logs', data: logsData });
+            }
             return logsData;
 
         } catch (error) {
@@ -608,7 +624,9 @@ class ApiService {
             throw error;
 
         } finally {
-            stateManager.set('loading.logs', false);
+            if (isInitialLoad) {
+                stateManager.set('loading.logs', false);
+            }
         }
     }
 

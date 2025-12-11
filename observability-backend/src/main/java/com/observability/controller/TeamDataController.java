@@ -63,12 +63,13 @@ public class TeamDataController {
             @RequestParam(required = false) Long endTime,
             @RequestParam(required = false) String level,
             @RequestParam(required = false) String serviceName,
-            @RequestParam(required = false, defaultValue = "100") Integer limit) {
+            @RequestParam(required = false, defaultValue = "100") Integer limit,
+            @RequestParam(required = false, defaultValue = "0") Integer offset) {
 
         Long userId = TenantContext.getUserId();
-        log.debug("User {} requesting logs for team {}", userId, teamId);
+        log.debug("User {} requesting logs for team {} (limit={}, offset={})", userId, teamId, limit, offset);
 
-        Map<String, Object> logs = teamDataService.getTeamLogs(userId, teamId, startTime, endTime, level, serviceName, limit);
+        Map<String, Object> logs = teamDataService.getTeamLogs(userId, teamId, startTime, endTime, level, serviceName, limit, offset);
         return ResponseEntity.ok(ApiResponse.success(logs));
     }
 
@@ -112,6 +113,19 @@ public class TeamDataController {
 
         Map<String, Object> alerts = teamDataService.getTeamAlerts(userId, teamId, status, severity);
         return ResponseEntity.ok(ApiResponse.success(alerts));
+    }
+
+    @GetMapping("/traces/{traceId}")
+    @Operation(summary = "Get a single trace by ID")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTrace(
+            @PathVariable Long teamId,
+            @PathVariable String traceId) {
+
+        Long userId = TenantContext.getUserId();
+        log.debug("User {} requesting trace {} for team {}", userId, traceId, teamId);
+
+        Map<String, Object> trace = teamDataService.getTrace(userId, teamId, traceId);
+        return ResponseEntity.ok(ApiResponse.success(trace));
     }
 }
 

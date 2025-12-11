@@ -341,10 +341,10 @@ public class TeamDataService {
     }
 
     /**
-     * Get logs for a team from the database
+     * Get logs for a team from the database with pagination
      */
     public Map<String, Object> getTeamLogs(Long userId, Long teamId, Long startTime, Long endTime,
-                                            String level, String serviceName, Integer limit) {
+                                            String level, String serviceName, Integer limit, Integer offset) {
         validateUserTeamAccess(userId, teamId);
 
         TeamEntity team = teamRepository.findById(teamId)
@@ -352,25 +352,34 @@ public class TeamDataService {
 
         long end = endTime != null ? endTime : System.currentTimeMillis();
         long start = startTime != null ? startTime : end - 3600000;
-        int logLimit = limit != null ? Math.min(limit, 1000) : 500;
+        int logLimit = limit != null ? Math.min(limit, 500) : 100;
+        int logOffset = offset != null ? offset : 0;
+        int pageNumber = logOffset / logLimit;
 
         Instant startInstant = Instant.ofEpochMilli(start);
         Instant endInstant = Instant.ofEpochMilli(end);
 
-        // Fetch logs from database
+        // Fetch logs from database with pagination
         List<LogEntity> logEntities = logRepository.findByTeamIdAndFilters(
-                teamId, level, serviceName, startInstant, endInstant, PageRequest.of(0, logLimit));
+                teamId, level, serviceName, startInstant, endInstant, PageRequest.of(pageNumber, logLimit));
 
         List<Map<String, Object>> logs = logEntities.stream()
                 .map(this::convertLogToMap)
                 .collect(Collectors.toList());
 
-        // Get facet counts for filtering
-        Map<String, Object> facets = buildLogFacets(logEntities);
+        // Get total count for pagination info (only on first page)
+        long totalCount = logs.size();
+        boolean hasMore = logs.size() >= logLimit;
+
+        // Get facet counts for filtering (only on first page to avoid overhead)
+        Map<String, Object> facets = logOffset == 0 ? buildLogFacets(logEntities) : Map.of();
 
         Map<String, Object> result = new HashMap<>();
         result.put("logs", logs);
-        result.put("total", logs.size());
+        result.put("total", totalCount);
+        result.put("hasMore", hasMore);
+        result.put("offset", logOffset);
+        result.put("limit", logLimit);
         result.put("team", Map.of("id", team.getId(), "name", team.getName()));
         result.put("facets", facets);
         result.put("timeRange", Map.of("startTime", start, "endTime", end));
@@ -691,6 +700,107 @@ public class TeamDataService {
         map.put("resolvedAt", alert.getResolvedAt() != null ?
                 alert.getResolvedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() : null);
         return map;
+    }
+
+    /**
+     * Get a single trace by ID with all its spans
+     */
+    public Map<String, Object> getTrace(Long userId, Long teamId, String traceId) {
+        validateUserTeamAccess(userId, teamId);
+
+        TeamEntity team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResourceNotFoundException("Team", "id", teamId));
+
+        // Fetch trace from database
+        Optional<TraceEntity> traceOpt = traceRepository.findByTraceId(traceId);
+
+        if (traceOpt.isEmpty()) {
+            throw new ResourceNotFoundException("Trace", "traceId", traceId);
+        }
+
+        TraceEntity trace = traceOpt.get();
+
+        // Verify trace belongs to this team
+        if (!teamId.equals(trace.getTeamId())) {
+            throw new AccessDeniedException("Trace does not belong to this team");
+        }
+
+        // Fetch all spans for this trace
+        List<SpanEntity> spans = spanRepository.findByTraceIdOrderByStartTimeAsc(traceId);
+
+        // Build trace response with spans
+        Map<String, Object> traceMap = new HashMap<>();
+        traceMap.put("traceId", trace.getTraceId());
+        traceMap.put("serviceName", trace.getServiceName());
+        traceMap.put("operationName", trace.getRootOperation());
+        traceMap.put("duration", trace.getDuration());
+        traceMap.put("spanCount", spans.size());
+        traceMap.put("timestamp", trace.getStartTime().toEpochMilli());
+        traceMap.put("error", "ERROR".equals(trace.getStatus()));
+        traceMap.put("status", trace.getStatus());
+
+        // Convert spans with depth calculation
+        List<Map<String, Object>> spanMaps = buildSpanHierarchy(spans);
+        traceMap.put("spans", spanMaps);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("trace", traceMap);
+        result.put("team", Map.of("id", team.getId(), "name", team.getName()));
+
+        return result;
+    }
+
+    /**
+     * Build span hierarchy with depth for waterfall visualization
+     */
+    private List<Map<String, Object>> buildSpanHierarchy(List<SpanEntity> spans) {
+        // Create a map of spanId -> span for quick lookup
+        Map<String, SpanEntity> spanMap = spans.stream()
+                .collect(Collectors.toMap(SpanEntity::getSpanId, s -> s));
+
+        // Calculate depth for each span
+        Map<String, Integer> depthMap = new HashMap<>();
+        for (SpanEntity span : spans) {
+            int depth = 0;
+            String parentId = span.getParentSpanId();
+            while (parentId != null && spanMap.containsKey(parentId)) {
+                depth++;
+                parentId = spanMap.get(parentId).getParentSpanId();
+            }
+            depthMap.put(span.getSpanId(), depth);
+        }
+
+        // Convert to maps with depth
+        return spans.stream().map(span -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("spanId", span.getSpanId());
+            map.put("parentSpanId", span.getParentSpanId());
+            map.put("operationName", span.getOperationName());
+            map.put("serviceName", span.getServiceName());
+            map.put("duration", span.getDuration());
+            map.put("startTime", span.getStartTime().toEpochMilli());
+            map.put("status", span.getStatus());
+            map.put("kind", span.getKind());
+            map.put("depth", depthMap.getOrDefault(span.getSpanId(), 0));
+            map.put("error", "ERROR".equals(span.getStatus()));
+
+            // Add tags/attributes if available
+            if (span.getAttributes() != null && !span.getAttributes().isEmpty()) {
+                try {
+                    // Parse JSON attributes
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, Object> attrs = mapper.readValue(span.getAttributes(), Map.class);
+                    map.put("tags", attrs);
+                } catch (Exception e) {
+                    log.warn("Failed to parse span attributes: {}", e.getMessage());
+                    map.put("tags", Map.of());
+                }
+            } else {
+                map.put("tags", Map.of());
+            }
+
+            return map;
+        }).collect(Collectors.toList());
     }
 }
 

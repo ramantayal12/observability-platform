@@ -6,18 +6,11 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const apiService = ApiService.getInstance();
-    const notificationManager = NotificationManager.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, apiService, notificationManager } = PageUtils.getServices();
 
     // Page state
     let currentFilters = {
@@ -29,12 +22,18 @@
         containers: [],
         timeRange: 3600000 // 1 hour
     };
-    let autoRefreshInterval = null;
     let liveTailInterval = null;
     let allLogs = [];
     let filteredLogs = [];
-    let timeRangePicker = null;
     let isLiveTailActive = false;
+    let autoRefresh = null;
+
+    // Pagination state
+    const PAGE_SIZE = 100;
+    let currentOffset = 0;
+    let hasMoreLogs = true;
+    let isLoadingMore = false;
+    let currentTimeRange = { startTime: null, endTime: null };
 
     // FacetFilter instances
     let levelFacet = null;
@@ -42,7 +41,6 @@
     let loggerFacet = null;
     let podFacet = null;
     let containerFacet = null;
-    let teamSelector = null;
 
     // Column configuration
     const allColumns = [
@@ -71,10 +69,16 @@
         // Load column preferences
         loadColumnPreferences();
 
-        // Setup UI
-        setupTeamSelector();
-        setupTimePicker();
-        setupAutoRefresh();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+        const timePicker = PageUtils.setupTimePicker();
+        if (timePicker) {
+            currentFilters.timeRange = timePicker.getRange();
+        }
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({ onRefresh: loadLogs });
+
         setupQueryBar();
         setupLiveTail();
         setupExport();
@@ -93,7 +97,7 @@
         // Setup auto-refresh if enabled
         const autoRefreshEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
         if (autoRefreshEnabled) {
-            startAutoRefresh();
+            autoRefresh.start();
         }
     }
 
@@ -194,29 +198,118 @@
         renderLogs();
     };
 
+    // Column widths state (persisted)
+    const COLUMN_WIDTHS_KEY = 'observability_logs_column_widths';
+    let columnWidths = loadColumnWidths();
+
+    function loadColumnWidths() {
+        try {
+            const saved = localStorage.getItem(COLUMN_WIDTHS_KEY);
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveColumnWidths() {
+        localStorage.setItem(COLUMN_WIDTHS_KEY, JSON.stringify(columnWidths));
+    }
+
     /**
-     * Render table header based on visible columns
+     * Render table header based on visible columns with resize handles
      */
     function renderTableHeader() {
         const header = document.getElementById('logsTableHeader');
         if (!header) return;
 
         const cols = allColumns.filter(c => visibleColumns.includes(c.id));
-        header.innerHTML = cols.map(col =>
-            `<div class="logs-table-col col-${col.id}" style="width: ${col.width}; ${col.width === 'auto' ? 'flex: 1;' : ''}">${col.label}</div>`
-        ).join('');
+        header.innerHTML = cols.map((col, index) => {
+            const width = columnWidths[col.id] || col.width;
+            const isLast = index === cols.length - 1;
+            const isAutoWidth = width === 'auto' || col.id === 'message';
+
+            return `<div class="logs-table-col col-${col.id} resizable-col"
+                         data-col-id="${col.id}"
+                         style="width: ${isAutoWidth ? 'auto' : width}; ${isAutoWidth ? 'flex: 1; min-width: 150px;' : 'flex-shrink: 0;'}">
+                <span class="col-label">${col.label}</span>
+                ${!isLast ? '<div class="col-resize-handle" data-col-id="' + col.id + '"></div>' : ''}
+            </div>`;
+        }).join('');
+
+        // Setup resize handlers
+        setupColumnResizeHandlers();
     }
 
     /**
-     * Setup team selector
+     * Setup column resize drag handlers
      */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
-        }
+    function setupColumnResizeHandlers() {
+        const header = document.getElementById('logsTableHeader');
+        if (!header) return;
+
+        const handles = header.querySelectorAll('.col-resize-handle');
+
+        handles.forEach(handle => {
+            handle.addEventListener('mousedown', startResize);
+        });
     }
+
+    let resizeState = null;
+
+    function startResize(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const colId = e.target.dataset.colId;
+        const colEl = document.querySelector(`.logs-table-col[data-col-id="${colId}"]`);
+        if (!colEl) return;
+
+        resizeState = {
+            colId,
+            colEl,
+            startX: e.clientX,
+            startWidth: colEl.offsetWidth
+        };
+
+        document.addEventListener('mousemove', doResize);
+        document.addEventListener('mouseup', stopResize);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    }
+
+    function doResize(e) {
+        if (!resizeState) return;
+
+        const diff = e.clientX - resizeState.startX;
+        const newWidth = Math.max(50, resizeState.startWidth + diff);
+
+        resizeState.colEl.style.width = newWidth + 'px';
+        resizeState.colEl.style.flex = 'none';
+
+        // Also update corresponding cells in the body
+        const bodyCells = document.querySelectorAll(`.log-cell.cell-${resizeState.colId}`);
+        bodyCells.forEach(cell => {
+            cell.style.width = newWidth + 'px';
+            cell.style.flex = 'none';
+        });
+    }
+
+    function stopResize(e) {
+        if (!resizeState) return;
+
+        // Save the new width
+        const finalWidth = resizeState.colEl.offsetWidth;
+        columnWidths[resizeState.colId] = finalWidth + 'px';
+        saveColumnWidths();
+
+        resizeState = null;
+        document.removeEventListener('mousemove', doResize);
+        document.removeEventListener('mouseup', stopResize);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    }
+
+    // setupTeamSelector, setupTimePicker and setupAutoRefresh are now handled by PageUtils in init()
 
     /**
      * Handle team change
@@ -224,20 +317,6 @@
     function handleTeamChange(team) {
         console.log('[Logs] Team changed:', team);
         loadLogs();
-    }
-
-    /**
-     * Setup time picker
-     */
-    function setupTimePicker() {
-        timeRangePicker = new TimeRangePicker({
-            buttonId: 'timePickerBtn',
-            dropdownId: 'timePickerDropdown',
-            labelId: 'timePickerLabel'
-        });
-
-        // Set initial time range
-        currentFilters.timeRange = timeRangePicker.getRange();
     }
 
     /**
@@ -249,76 +328,52 @@
         loadLogs();
     }
 
-    /**
-     * Setup auto-refresh and manual refresh
-     */
-    function setupAutoRefresh() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadLogs();
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
+    // Query autocomplete configuration
+    const queryFields = [
+        { field: 'level', label: 'Level', description: 'Log level (ERROR, WARN, INFO, DEBUG)', values: ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'] },
+        { field: 'service', label: 'Service', description: 'Service name' },
+        { field: 'trace-id', label: 'Trace ID', description: 'Distributed trace identifier' },
+        { field: 'span-id', label: 'Span ID', description: 'Span identifier' },
+        { field: 'logger', label: 'Logger', description: 'Logger class name' },
+        { field: 'message', label: 'Message', description: 'Log message content' },
+        { field: 'pod', label: 'Pod', description: 'Kubernetes pod name' },
+        { field: 'container', label: 'Container', description: 'Container name' },
+        { field: 'host', label: 'Host', description: 'Hostname' }
+    ];
 
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
+    const queryOperators = [
+        { op: ':', label: 'equals', description: 'Exact match', example: 'level:ERROR' },
+        { op: ':!', label: 'not equals', description: 'Does not equal', example: 'level:!DEBUG' },
+        { op: ':~', label: 'contains', description: 'Contains substring', example: 'message:~timeout' },
+        { op: ':>', label: 'greater than', description: 'Greater than (for numeric)', example: 'duration:>100' },
+        { op: ':<', label: 'less than', description: 'Less than (for numeric)', example: 'duration:<50' }
+    ];
 
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                startAutoRefresh();
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                stopAutoRefresh();
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
-    }
+    let autocompleteState = {
+        visible: false,
+        selectedIndex: 0,
+        items: [],
+        mode: 'field' // 'field', 'operator', 'value'
+    };
 
     /**
-     * Start auto-refresh
-     */
-    function startAutoRefresh() {
-        stopAutoRefresh();
-        autoRefreshInterval = setInterval(() => {
-            loadLogs();
-        }, 30000); // 30 seconds
-    }
-
-    /**
-     * Stop auto-refresh
-     */
-    function stopAutoRefresh() {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
-            autoRefreshInterval = null;
-        }
-    }
-
-    /**
-     * Setup query bar
+     * Setup query bar with autocomplete
      */
     function setupQueryBar() {
         const queryInput = document.getElementById('queryInput');
         const runQueryBtn = document.getElementById('runQueryBtn');
+        const autocomplete = document.getElementById('queryAutocomplete');
 
         if (queryInput) {
-            queryInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    runQuery();
+            queryInput.addEventListener('keydown', handleQueryKeydown);
+            queryInput.addEventListener('input', handleQueryInput);
+            queryInput.addEventListener('blur', () => {
+                // Delay hide to allow click on autocomplete items
+                setTimeout(() => hideAutocomplete(), 150);
+            });
+            queryInput.addEventListener('focus', () => {
+                if (queryInput.value === '') {
+                    showFieldSuggestions();
                 }
             });
         }
@@ -329,9 +384,266 @@
     }
 
     /**
+     * Handle query input keydown for navigation
+     */
+    function handleQueryKeydown(e) {
+        const autocomplete = document.getElementById('queryAutocomplete');
+
+        if (!autocompleteState.visible) {
+            if (e.key === 'Enter') {
+                runQuery();
+            }
+            return;
+        }
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                autocompleteState.selectedIndex = Math.min(
+                    autocompleteState.selectedIndex + 1,
+                    autocompleteState.items.length - 1
+                );
+                renderAutocomplete();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                autocompleteState.selectedIndex = Math.max(autocompleteState.selectedIndex - 1, 0);
+                renderAutocomplete();
+                break;
+            case 'Enter':
+            case 'Tab':
+                e.preventDefault();
+                selectAutocompleteItem(autocompleteState.selectedIndex);
+                break;
+            case 'Escape':
+                hideAutocomplete();
+                break;
+        }
+    }
+
+    /**
+     * Handle query input changes
+     */
+    function handleQueryInput(e) {
+        const value = e.target.value;
+        const cursorPos = e.target.selectionStart;
+
+        // Get the current token being typed
+        const beforeCursor = value.substring(0, cursorPos);
+        const tokens = beforeCursor.split(/\s+/);
+        const currentToken = tokens[tokens.length - 1] || '';
+
+        if (currentToken === '') {
+            showFieldSuggestions();
+            return;
+        }
+
+        // Check if we're typing a field name
+        const colonIndex = currentToken.indexOf(':');
+
+        if (colonIndex === -1) {
+            // Still typing field name
+            showFieldSuggestions(currentToken);
+        } else {
+            // After colon - show operators or values
+            const fieldName = currentToken.substring(0, colonIndex);
+            const afterColon = currentToken.substring(colonIndex + 1);
+
+            // Check for operator prefix
+            if (afterColon === '' || afterColon === '!' || afterColon === '~' || afterColon === '>' || afterColon === '<') {
+                showOperatorSuggestions(fieldName, afterColon);
+            } else {
+                // Show value suggestions if available
+                showValueSuggestions(fieldName, afterColon);
+            }
+        }
+    }
+
+    /**
+     * Show field name suggestions
+     */
+    function showFieldSuggestions(filter = '') {
+        const filterLower = filter.toLowerCase();
+        autocompleteState.items = queryFields
+            .filter(f => f.field.toLowerCase().includes(filterLower) || f.label.toLowerCase().includes(filterLower))
+            .map(f => ({
+                type: 'field',
+                value: f.field,
+                label: f.field,
+                description: f.description,
+                insert: f.field + ':'
+            }));
+
+        autocompleteState.mode = 'field';
+        autocompleteState.selectedIndex = 0;
+
+        if (autocompleteState.items.length > 0) {
+            showAutocomplete();
+        } else {
+            hideAutocomplete();
+        }
+    }
+
+    /**
+     * Show operator suggestions
+     */
+    function showOperatorSuggestions(fieldName, currentOp) {
+        autocompleteState.items = queryOperators
+            .filter(o => o.op.startsWith(':' + currentOp) || currentOp === '')
+            .map(o => ({
+                type: 'operator',
+                value: o.op,
+                label: `${fieldName}${o.op}`,
+                description: `${o.label} - ${o.description}`,
+                insert: o.op.substring(1 + currentOp.length), // Insert remaining part
+                example: o.example
+            }));
+
+        autocompleteState.mode = 'operator';
+        autocompleteState.selectedIndex = 0;
+
+        if (autocompleteState.items.length > 0) {
+            showAutocomplete();
+        } else {
+            hideAutocomplete();
+        }
+    }
+
+    /**
+     * Show value suggestions for fields with predefined values
+     */
+    function showValueSuggestions(fieldName, currentValue) {
+        const field = queryFields.find(f => f.field === fieldName);
+
+        if (!field || !field.values) {
+            hideAutocomplete();
+            return;
+        }
+
+        const filterLower = currentValue.toLowerCase();
+        autocompleteState.items = field.values
+            .filter(v => v.toLowerCase().includes(filterLower))
+            .map(v => ({
+                type: 'value',
+                value: v,
+                label: v,
+                description: `${fieldName} = ${v}`,
+                insert: v.substring(currentValue.length)
+            }));
+
+        autocompleteState.mode = 'value';
+        autocompleteState.selectedIndex = 0;
+
+        if (autocompleteState.items.length > 0) {
+            showAutocomplete();
+        } else {
+            hideAutocomplete();
+        }
+    }
+
+    /**
+     * Show autocomplete dropdown
+     */
+    function showAutocomplete() {
+        autocompleteState.visible = true;
+        renderAutocomplete();
+    }
+
+    /**
+     * Hide autocomplete dropdown
+     */
+    function hideAutocomplete() {
+        autocompleteState.visible = false;
+        const autocomplete = document.getElementById('queryAutocomplete');
+        if (autocomplete) {
+            autocomplete.style.display = 'none';
+        }
+    }
+
+    /**
+     * Render autocomplete dropdown
+     */
+    function renderAutocomplete() {
+        const autocomplete = document.getElementById('queryAutocomplete');
+        if (!autocomplete) return;
+
+        if (!autocompleteState.visible || autocompleteState.items.length === 0) {
+            autocomplete.style.display = 'none';
+            return;
+        }
+
+        autocomplete.style.display = 'block';
+        autocomplete.innerHTML = `
+            <div class="autocomplete-header">
+                ${autocompleteState.mode === 'field' ? 'Fields' : autocompleteState.mode === 'operator' ? 'Operators' : 'Values'}
+            </div>
+            ${autocompleteState.items.map((item, index) => `
+                <div class="autocomplete-item ${index === autocompleteState.selectedIndex ? 'selected' : ''}"
+                     data-index="${index}"
+                     onmousedown="window.selectQueryAutocomplete(${index})">
+                    <div class="autocomplete-item-main">
+                        <span class="autocomplete-item-label">${escapeHtml(item.label)}</span>
+                        ${item.example ? `<span class="autocomplete-item-example">${escapeHtml(item.example)}</span>` : ''}
+                    </div>
+                    <div class="autocomplete-item-desc">${escapeHtml(item.description)}</div>
+                </div>
+            `).join('')}
+        `;
+    }
+
+    /**
+     * Select autocomplete item (exposed globally for onclick)
+     */
+    window.selectQueryAutocomplete = function(index) {
+        selectAutocompleteItem(index);
+    };
+
+    /**
+     * Select an autocomplete item
+     */
+    function selectAutocompleteItem(index) {
+        const item = autocompleteState.items[index];
+        if (!item) return;
+
+        const queryInput = document.getElementById('queryInput');
+        const value = queryInput.value;
+        const cursorPos = queryInput.selectionStart;
+
+        // Insert the completion
+        const beforeCursor = value.substring(0, cursorPos);
+        const afterCursor = value.substring(cursorPos);
+
+        let newValue, newCursorPos;
+
+        if (item.type === 'field') {
+            // Replace current token with field:
+            const tokens = beforeCursor.split(/\s+/);
+            tokens[tokens.length - 1] = item.insert;
+            newValue = tokens.join(' ') + afterCursor;
+            newCursorPos = tokens.join(' ').length;
+        } else {
+            // Append the insert text
+            newValue = beforeCursor + item.insert + afterCursor;
+            newCursorPos = cursorPos + item.insert.length;
+        }
+
+        queryInput.value = newValue;
+        queryInput.setSelectionRange(newCursorPos, newCursorPos);
+        queryInput.focus();
+
+        // Continue showing suggestions if we just inserted a field
+        if (item.type === 'field') {
+            showOperatorSuggestions(item.value, '');
+        } else {
+            hideAutocomplete();
+        }
+    }
+
+    /**
      * Run query
      */
     function runQuery() {
+        hideAutocomplete();
         const queryInput = document.getElementById('queryInput');
         currentFilters.query = queryInput.value.trim();
         applyFilters();
@@ -492,21 +804,32 @@
     }
 
     /**
-     * Load logs data
+     * Load logs data (initial load)
      */
     async function loadLogs() {
         try {
+            // Reset pagination state
+            currentOffset = 0;
+            hasMoreLogs = true;
+            allLogs = [];
+
             const endTime = Date.now();
             const startTime = endTime - currentFilters.timeRange;
 
-            // Use team-specific endpoint
+            // Store time range for subsequent loads
+            currentTimeRange = { startTime, endTime };
+
+            // Use team-specific endpoint with pagination
             const data = await apiService.fetchTeamLogs({
                 startTime,
                 endTime,
-                limit: 1000
+                limit: PAGE_SIZE,
+                offset: 0
             });
 
             allLogs = data.logs || [];
+            hasMoreLogs = data.hasMore !== false && allLogs.length >= PAGE_SIZE;
+            currentOffset = allLogs.length;
 
             // Apply filters and render
             applyFilters();
@@ -517,10 +840,102 @@
             // Update histogram
             updateHistogram();
 
+            // Setup infinite scroll
+            setupInfiniteScroll();
+
         } catch (error) {
             console.error('Error loading logs:', error);
             notificationManager.error('Failed to load logs');
         }
+    }
+
+    /**
+     * Load more logs (pagination)
+     */
+    async function loadMoreLogs() {
+        if (isLoadingMore || !hasMoreLogs) return;
+
+        isLoadingMore = true;
+        showLoadingIndicator();
+
+        try {
+            const data = await apiService.fetchTeamLogs({
+                startTime: currentTimeRange.startTime,
+                endTime: currentTimeRange.endTime,
+                limit: PAGE_SIZE,
+                offset: currentOffset
+            });
+
+            const newLogs = data.logs || [];
+
+            if (newLogs.length > 0) {
+                allLogs = [...allLogs, ...newLogs];
+                currentOffset += newLogs.length;
+                hasMoreLogs = data.hasMore !== false && newLogs.length >= PAGE_SIZE;
+
+                // Re-apply filters and render
+                applyFilters();
+            } else {
+                hasMoreLogs = false;
+            }
+
+        } catch (error) {
+            console.error('Error loading more logs:', error);
+            notificationManager.error('Failed to load more logs');
+        } finally {
+            isLoadingMore = false;
+            hideLoadingIndicator();
+        }
+    }
+
+    /**
+     * Setup infinite scroll on logs table body
+     */
+    function setupInfiniteScroll() {
+        const scrollWrapper = document.querySelector('.logs-table-scroll-wrapper');
+        if (!scrollWrapper) return;
+
+        // Remove existing listener if any
+        scrollWrapper.removeEventListener('scroll', handleScroll);
+        scrollWrapper.addEventListener('scroll', handleScroll);
+    }
+
+    /**
+     * Handle scroll event for infinite scroll
+     */
+    function handleScroll(e) {
+        const element = e.target;
+        const scrollBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+
+        // Load more when within 200px of bottom
+        if (scrollBottom < 200 && hasMoreLogs && !isLoadingMore) {
+            loadMoreLogs();
+        }
+    }
+
+    /**
+     * Show loading indicator at bottom of logs
+     */
+    function showLoadingIndicator() {
+        const container = document.getElementById('logsTableBody');
+        if (!container) return;
+
+        // Remove existing indicator
+        const existing = container.querySelector('.logs-loading-more');
+        if (existing) existing.remove();
+
+        const indicator = document.createElement('div');
+        indicator.className = 'logs-loading-more';
+        indicator.innerHTML = '<span class="loading-spinner"></span> Loading more logs...';
+        container.appendChild(indicator);
+    }
+
+    /**
+     * Hide loading indicator
+     */
+    function hideLoadingIndicator() {
+        const indicator = document.querySelector('.logs-loading-more');
+        if (indicator) indicator.remove();
     }
 
     /**
@@ -567,25 +982,54 @@
     }
 
     /**
-     * Filter logs by query string
+     * Filter logs by query string with advanced operators
+     * Supports: field:value (equals), field:!value (not equals), field:~value (contains)
      */
     function filterByQuery(logs, query) {
-        const queryLower = query.toLowerCase();
-
-        // Parse query for field:value patterns
-        const fieldPatterns = query.match(/(\w+):(\S+)/g) || [];
-        const textSearch = query.replace(/\w+:\S+/g, '').trim().toLowerCase();
+        // Parse query for field:operator:value patterns
+        // Matches: field:value, field:!value, field:~value, field:>value, field:<value
+        const fieldPatterns = query.match(/([\w-]+):([\!\~\>\<]?)(\S+)/g) || [];
+        const textSearch = query.replace(/([\w-]+):([\!\~\>\<]?)(\S+)/g, '').trim().toLowerCase();
 
         return logs.filter(log => {
             // Check field patterns
             for (const pattern of fieldPatterns) {
-                const [field, value] = pattern.split(':');
+                const match = pattern.match(/([\w-]+):([\!\~\>\<]?)(.+)/);
+                if (!match) continue;
+
+                const [, field, operator, value] = match;
                 const valueLower = value.toLowerCase();
 
-                if (field === 'level' && log.level.toLowerCase() !== valueLower) return false;
-                if (field === 'service' && !log.serviceName?.toLowerCase().includes(valueLower)) return false;
-                if (field === 'logger' && !log.logger?.toLowerCase().includes(valueLower)) return false;
-                if (field === 'message' && !log.message?.toLowerCase().includes(valueLower)) return false;
+                // Get the log field value
+                const logValue = getLogFieldValue(log, field);
+                if (logValue === null || logValue === undefined) continue;
+
+                const logValueLower = String(logValue).toLowerCase();
+
+                // Apply operator
+                let matches = false;
+                switch (operator) {
+                    case '!': // not equals
+                        matches = !logValueLower.includes(valueLower);
+                        break;
+                    case '~': // contains
+                        matches = logValueLower.includes(valueLower);
+                        break;
+                    case '>': // greater than
+                        matches = parseFloat(logValue) > parseFloat(value);
+                        break;
+                    case '<': // less than
+                        matches = parseFloat(logValue) < parseFloat(value);
+                        break;
+                    default: // equals (exact match for level, contains for others)
+                        if (field === 'level') {
+                            matches = logValueLower === valueLower;
+                        } else {
+                            matches = logValueLower.includes(valueLower);
+                        }
+                }
+
+                if (!matches) return false;
             }
 
             // Check text search
@@ -596,6 +1040,25 @@
 
             return true;
         });
+    }
+
+    /**
+     * Get log field value by field name
+     */
+    function getLogFieldValue(log, field) {
+        const fieldMap = {
+            'level': log.level,
+            'service': log.serviceName,
+            'logger': log.logger,
+            'message': log.message,
+            'trace-id': log.traceId,
+            'span-id': log.spanId,
+            'pod': log.pod,
+            'container': log.container,
+            'host': log.host || log.hostname,
+            'duration': log.duration
+        };
+        return fieldMap[field] || log[field];
     }
 
     /**
@@ -847,8 +1310,19 @@
         const cols = allColumns.filter(c => visibleColumns.includes(c.id));
 
         const cells = cols.map(col => {
-            const width = col.width === 'auto' ? 'flex: 1;' : `width: ${col.width};`;
-            return `<div class="log-cell cell-${col.id}" style="${width}">${getCellValue(log, col.id)}</div>`;
+            const savedWidth = columnWidths[col.id];
+            const isAutoWidth = col.id === 'message' || col.width === 'auto';
+            let style;
+
+            if (savedWidth) {
+                style = `width: ${savedWidth}; flex-shrink: 0;`;
+            } else if (isAutoWidth) {
+                style = 'flex: 1; min-width: 150px;';
+            } else {
+                style = `width: ${col.width}; flex-shrink: 0;`;
+            }
+
+            return `<div class="log-cell cell-${col.id}" style="${style}">${getCellValue(log, col.id)}</div>`;
         }).join('');
 
         return `
@@ -960,15 +1434,10 @@
         notificationManager.success('Logs exported successfully');
     }
 
-    /**
-     * Escape HTML
-     */
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // Use PageUtils for common helper functions
+    const escapeHtml = PageUtils.escapeHtml;
+    const formatTimestamp = PageUtils.formatTimestamp;
+    const debounce = PageUtils.debounce;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
@@ -979,7 +1448,7 @@
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
-        stopAutoRefresh();
+        if (autoRefresh) autoRefresh.cleanup();
         stopLiveTail();
     });
 

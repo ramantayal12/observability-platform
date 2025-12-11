@@ -6,17 +6,11 @@
 (function() {
     'use strict';
 
-    // Check authentication first
-    const authService = AuthService.getInstance();
-    if (!authService.isAuthenticated()) {
-        window.location.href = 'login.html';
-        return;
-    }
+    // Use PageUtils for common initialization
+    if (!PageUtils.requireAuth()) return;
 
-    // Get singleton instances
-    const eventBus = EventBus.getInstance();
-    const stateManager = StateManager.getInstance();
-    const notificationManager = NotificationManager.getInstance();
+    // Get singleton instances using PageUtils
+    const { eventBus, stateManager, notificationManager } = PageUtils.getServices();
 
     // Page state
     let alertPolicies = [];
@@ -30,10 +24,9 @@
         containers: []
     };
     let currentTimeRange = stateManager.get('filters.timeRange') || 60 * 60 * 1000;
-    let timeRangePicker = null;
     let currentTab = 'incidents';
     let selectedIncidentId = null;
-    let teamSelector = null;
+    let autoRefresh = null;
 
     // FacetFilter instances
     let stateFacet = null;
@@ -48,10 +41,16 @@
     async function init() {
         console.log('Initializing Alerts page (New Relic style)...');
 
-        // Setup UI
-        setupTeamSelector();
-        setupTimePicker();
-        setupAutoRefresh();
+        // Setup UI using PageUtils
+        PageUtils.setupTeamSelector();
+        const timePicker = PageUtils.setupTimePicker();
+        if (timePicker) {
+            currentTimeRange = timePicker.getRange();
+        }
+
+        // Setup auto-refresh using PageUtils
+        autoRefresh = PageUtils.setupAutoRefresh({ onRefresh: loadAlerts });
+
         setupTabs();
         setupFacetFilters();
         setupIncidentPanel();
@@ -67,36 +66,11 @@
     }
 
     /**
-     * Setup team selector
-     */
-    function setupTeamSelector() {
-        if (window.TeamSelector) {
-            teamSelector = new TeamSelector({
-                containerId: 'teamSelectorContainer'
-            });
-        }
-    }
-
-    /**
      * Handle team change
      */
     function handleTeamChange(team) {
         console.log('[Alerts] Team changed:', team);
         loadAlerts();
-    }
-
-    /**
-     * Setup time picker
-     */
-    function setupTimePicker() {
-        timeRangePicker = new TimeRangePicker({
-            buttonId: 'timePickerBtn',
-            dropdownId: 'timePickerDropdown',
-            labelId: 'timePickerLabel'
-        });
-
-        // Set initial time range
-        currentTimeRange = timeRangePicker.getRange();
     }
 
     /**
@@ -106,43 +80,6 @@
         console.log('[Alerts] Time range changed:', data);
         currentTimeRange = data.range;
         loadAlerts();
-    }
-
-    /**
-     * Setup auto-refresh and manual refresh
-     */
-    function setupAutoRefresh() {
-        // Manual refresh button
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', async () => {
-                refreshBtn.classList.add('spinning');
-                await loadAlerts();
-                refreshBtn.classList.remove('spinning');
-                notificationManager.success('Data refreshed');
-            });
-        }
-
-        // Auto-refresh toggle button
-        const autoRefreshBtn = document.getElementById('autoRefreshBtn');
-        if (!autoRefreshBtn) return;
-
-        const isEnabled = localStorage.getItem('observability_auto_refresh') === 'true';
-
-        if (isEnabled) {
-            autoRefreshBtn.classList.add('active');
-        }
-
-        autoRefreshBtn.addEventListener('click', () => {
-            const enabled = autoRefreshBtn.classList.toggle('active');
-            localStorage.setItem('observability_auto_refresh', enabled);
-
-            if (enabled) {
-                notificationManager.success('Auto-refresh enabled (30s)');
-            } else {
-                notificationManager.info('Auto-refresh disabled');
-            }
-        });
     }
 
     /**
@@ -1071,8 +1008,14 @@
     };
 
     /**
-     * Helper functions
+     * Helper functions - use PageUtils for common ones
      */
+    const capitalizeFirst = PageUtils.capitalizeFirst;
+    const getTimeSince = PageUtils.getTimeSince;
+    const formatDuration = PageUtils.formatDuration;
+    const escapeHtml = PageUtils.escapeHtml;
+    const getSeverityColor = PageUtils.getSeverityColor;
+
     function getSeverityBadgeClass(severity) {
         const map = {
             'critical': 'error',
@@ -1092,39 +1035,17 @@
         return map[priority] || 'P4';
     }
 
-    function capitalizeFirst(str) {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
-    function getTimeSince(timestamp) {
-        const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
-        if (seconds < 60) return `${seconds}s ago`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-        return `${Math.floor(seconds / 86400)}d ago`;
-    }
-
-    function formatDuration(ms) {
-        const seconds = Math.floor(ms / 1000);
-        if (seconds < 60) return `${seconds}s`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-        return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (autoRefresh) autoRefresh.cleanup();
+    });
 
 })();
 

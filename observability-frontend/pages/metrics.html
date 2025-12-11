@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/components.css">
+    <link rel="stylesheet" href="../assets/css/pages.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 </head>
@@ -148,25 +149,51 @@
 
         <!-- Page Content -->
         <div class="page-content">
-            <!-- Filters -->
-            <div class="filters-bar">
-                <div class="form-group">
-                    <label class="form-label">Service</label>
-                    <select class="form-input" id="serviceFilter">
-                        <option value="">All Services</option>
-                    </select>
+            <!-- Enhanced Filters Bar -->
+            <div class="metrics-filters-bar">
+                <div class="filters-left">
+                    <div class="filter-group">
+                        <label class="filter-label">Service</label>
+                        <select class="filter-select" id="serviceFilter">
+                            <option value="">All Services</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Metric Type</label>
+                        <select class="filter-select" id="metricFilter">
+                            <option value="">All Metrics</option>
+                            <option value="api.latency">API Latency</option>
+                            <option value="service.latency">Service Latency</option>
+                            <option value="throughput">Throughput</option>
+                            <option value="error.rate">Error Rate</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Aggregation</label>
+                        <select class="filter-select" id="aggregationFilter">
+                            <option value="avg">Average</option>
+                            <option value="p50">P50</option>
+                            <option value="p90">P90</option>
+                            <option value="p95">P95</option>
+                            <option value="p99">P99</option>
+                            <option value="max">Max</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Metric</label>
-                    <select class="form-input" id="metricFilter">
-                        <option value="">All Metrics</option>
-                        <option value="api.latency">API Latency</option>
-                        <option value="service.latency">Service Latency</option>
-                        <option value="throughput">Throughput</option>
-                        <option value="error.rate">Error Rate</option>
-                    </select>
+                <div class="filters-right">
+                    <button class="btn btn-secondary btn-sm" id="compareBtn">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2z"/>
+                        </svg>
+                        Compare
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="applyFiltersBtn">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
+                        Apply
+                    </button>
                 </div>
-                <button class="btn btn-primary" id="applyFiltersBtn">Apply Filters</button>
             </div>
 
             <!-- Stats Grid -->
@@ -232,6 +259,7 @@
     <script src="../config/constants.js"></script>
     <script src="../core/EventBus.js"></script>
     <script src="../core/StateManager.js"></script>
+    <script src="../core/PageUtils.js"></script>
     <script src="../services/MockDataService.js"></script>
     <script src="../services/ApiService.js"></script>
     <script src="../services/AuthService.js"></script>
@@ -244,6 +272,7 @@
     <script src="../components/Topbar.js"></script>
     <script src="../components/InteractiveChart.js"></script>
     <script src="../components/AuthUI.js"></script>
+    <script src="../components/CommandPalette.js"></script>
 
     <!-- Page Scripts -->
     <script src="../assets/js/metrics.js"></script>
