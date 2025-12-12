@@ -56,6 +56,7 @@ com/observability/dto/response/AuthResponse$UserInfo$UserInfoBuilder.class
 com/observability/entity/MetricEntity.class
 com/observability/dto/response/ContextResponse$OrganizationInfo$OrganizationInfoBuilder.class
 com/observability/dto/response/DashboardOverviewResponse$TracesSummary.class
+com/observability/config/RedisConfig.class
 com/observability/mapper/SpanMapper.class
 com/observability/repository/OrganizationRepository.class
 com/observability/dto/response/OrganizationResponse$OrganizationResponseBuilder.class
@@ -85,6 +86,7 @@ com/observability/model/LogEntry.class
 com/observability/repository/LogRepository.class
 com/observability/dto/response/DashboardOverviewResponse$TracesSummary$TracesSummaryBuilder.class
 com/observability/dto/response/ContextResponse$UserInfo.class
+com/observability/config/ClickHouseConfig.class
 com/observability/dto/response/ContextResponse$ContextResponseBuilder.class
 com/observability/entity/TraceEntity$TraceEntityBuilder.class
 com/observability/dto/request/MetricRequest.class
@@ -100,12 +102,14 @@ com/observability/mapper/TraceMapper.class
 com/observability/dto/response/ServiceResponse$ServiceResponseBuilder.class
 com/observability/repository/TeamRepository.class
 com/observability/entity/ChartConfigEntity.class
+com/observability/controller/ClickHouseDataController.class
 com/observability/dto/response/AuthResponse$UserInfo.class
 com/observability/entity/UserEntity$UserEntityBuilder.class
 com/observability/security/TenantFilter.class
 com/observability/config/SecurityConfig.class
 com/observability/common/exception/ValidationException.class
 com/observability/entity/MetricEntity$MetricEntityBuilder.class
+com/observability/repository/clickhouse/ClickHouseSpansRepository.class
 com/observability/dto/response/DashboardOverviewResponse.class
 com/observability/dto/request/LoginRequest.class
 com/observability/entity/ServiceEntity$ServiceEntityBuilder.class
@@ -113,6 +117,7 @@ com/observability/dto/request/LogRequest$LogRequestBuilder.class
 com/observability/service/api/MetricServiceApi.class
 com/observability/dto/response/ContextResponse.class
 com/observability/dto/response/TeamResponse$TeamResponseBuilder.class
+com/observability/repository/clickhouse/ClickHouseLogsRepository.class
 com/observability/service/TeamDataService.class
 com/observability/repository/UserTeamRepository.class
 com/observability/common/exception/GlobalExceptionHandler.class
@@ -136,6 +141,7 @@ com/observability/repository/SpanRepository.class
 com/observability/entity/SpanEntity$SpanEntityBuilder.class
 com/observability/controller/AuthController.class
 com/observability/dto/response/SpanResponse.class
+com/observability/service/CacheService.class
 com/observability/dto/request/LoginRequest$LoginRequestBuilder.class
 com/observability/repository/MetricRepository.class
 com/observability/dto/response/LogResponse$LogResponseBuilder.class
@@ -147,6 +153,8 @@ com/observability/service/api/DashboardServiceApi.class
 com/observability/dto/response/AuthResponse$OrganizationInfo.class
 com/observability/dto/response/UserResponse$TeamMembershipResponse$TeamMembershipResponseBuilder.class
 com/observability/controller/DashboardController.class
+com/observability/service/ClickHouseDataService.class
+com/observability/repository/clickhouse/ClickHouseIncidentsRepository.class
 com/observability/dto/response/DashboardOverviewResponse$LogsSummary$LogsSummaryBuilder.class
 com/observability/entity/TraceEntity.class
 com/observability/dto/request/AlertRequest$AlertRequestBuilder.class

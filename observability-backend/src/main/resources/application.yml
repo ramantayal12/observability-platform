@@ -18,6 +18,16 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
 
+# Actuator for health checks
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
 logging:
   level:
     com.observability: INFO
@@ -30,6 +40,10 @@ observability:
     metrics-days: 7
     logs-days: 7
     traces-days: 7
+
+# ClickHouse feature flag (set to false to use MySQL only)
+clickhouse:
+  enabled: ${CLICKHOUSE_ENABLED:false}
 
 ---
 # H2 Profile (Development)
@@ -68,3 +82,54 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  # Redis Configuration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+# ClickHouse Configuration
+clickhouse:
+  host: ${CLICKHOUSE_HOST:localhost}
+  port: ${CLICKHOUSE_PORT:8123}
+  database: ${CLICKHOUSE_DATABASE:observex}
+  user: ${CLICKHOUSE_USER:observex}
+  password: ${CLICKHOUSE_PASSWORD:observex123}
+  socket-timeout: 300000
+  connection-timeout: 10000
+
+---
+# Docker Profile (for docker-compose)
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:mysql://mysql:3306/observex?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: observex
+    password: observex123
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+clickhouse:
+  host: clickhouse
+  port: 8123
+  database: observex
+  user: observex
+  password: observex123
