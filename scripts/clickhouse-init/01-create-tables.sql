@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS observex.spans (
     operation_name LowCardinality(String),
     service_name LowCardinality(String),
     span_kind LowCardinality(String),  -- SERVER, CLIENT, INTERNAL, PRODUCER, CONSUMER
-    start_time DateTime64(3),
-    end_time DateTime64(3),
+    start_time DateTime,
+    end_time DateTime,
     duration_ms UInt64,
     status LowCardinality(String),  -- OK, ERROR
     status_message String,
@@ -55,7 +55,7 @@ SETTINGS index_granularity = 8192;
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS observex.logs (
     team_id UUID,
-    timestamp DateTime64(3),
+    timestamp DateTime,
     level LowCardinality(String),
     service_name LowCardinality(String),
     logger LowCardinality(String),
@@ -93,10 +93,10 @@ CREATE TABLE IF NOT EXISTS observex.incidents (
     status LowCardinality(String),
     source LowCardinality(String),
     service_name LowCardinality(String),
-    created_at DateTime64(3),
-    updated_at DateTime64(3),
-    resolved_at Nullable(DateTime64(3)),
-    acknowledged_at Nullable(DateTime64(3)),
+    created_at DateTime,
+    updated_at DateTime,
+    resolved_at Nullable(DateTime),
+    acknowledged_at Nullable(DateTime),
     acknowledged_by Nullable(String),
     attributes Map(String, String),
 

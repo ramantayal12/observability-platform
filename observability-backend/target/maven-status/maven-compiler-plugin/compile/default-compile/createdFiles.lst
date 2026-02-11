@@ -62,6 +62,7 @@ com/observability/repository/OrganizationRepository.class
 com/observability/dto/response/OrganizationResponse$OrganizationResponseBuilder.class
 com/observability/dto/response/TeamResponse.class
 com/observability/model/Span.class
+com/observability/config/DataSourceConfig.class
 com/observability/security/TenantContext$TenantContextBuilder.class
 com/observability/common/response/PageInfo.class
 com/observability/repository/TeamOverviewDataRepository.class

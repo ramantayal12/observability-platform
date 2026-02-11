@@ -582,14 +582,8 @@ class DataGenerator:
             # Create services
             services = self.create_services(org_id, teams)
 
-            # Create traces and spans (enterprise-level: 200 traces per team)
-            self.create_traces_and_spans(org_id, teams, services, num_traces=200)
-
-            # Create logs (enterprise-level: 1000 logs per team)
-            self.create_logs(org_id, teams, services, num_logs=1000)
-
-            # Create metrics (enterprise-level: 500 metrics per team)
-            self.create_metrics(org_id, teams, services, num_points=500)
+            # Skip traces, logs, metrics - those go into ClickHouse
+            # Use clickhouse_data_generator.py for time-series data
 
             # Create chart configurations
             self.create_chart_configs(teams)
@@ -601,19 +595,17 @@ class DataGenerator:
             self.create_alerts(org_id, teams, services)
 
             print("\n" + "="*60)
-            print("✅ Data generation complete!")
+            print("✅ MySQL data generation complete!")
             print("="*60)
             print("\n📋 Summary:")
             print(f"   • 1 organization")
             print(f"   • {len(teams)} teams")
             print(f"   • 1 user (demo@observex.io)")
             print(f"   • {sum(len(s) for s in services.values())} services")
-            print(f"   • {200 * len(teams)} traces")
-            print(f"   • {1000 * len(teams)} logs")
-            print(f"   • {500 * len(teams)} metrics")
             print(f"   • {8 * len(teams)} chart configs")
             print(f"   • {6 * len(teams)} API endpoints")
             print(f"   • {10 * len(teams)} alerts")
+            print("\n📈 Note: Time-series data (traces, logs, metrics) will be generated in ClickHouse")
             print("\n🔑 Login credentials:")
             print("   Email: demo@observex.io")
             print("   Password: (any password)")

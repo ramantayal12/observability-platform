@@ -264,8 +264,7 @@ class ClickHouseDataGenerator:
                         severity, "P1" if severity == "CRITICAL" else "P2",
                         status, "prometheus", service_name,
                         created_at, created_at, resolved_at,
-                        acknowledged_at, acknowledged_by,
-                        f"pod-{service_name}-1", service_name, {}
+                        acknowledged_at, acknowledged_by, {}
                     ])
 
         if rows:
@@ -273,7 +272,7 @@ class ClickHouseDataGenerator:
                 "team_id", "incident_id", "alert_policy_id", "title", "description",
                 "severity", "priority", "status", "source", "service_name",
                 "created_at", "updated_at", "resolved_at", "acknowledged_at",
-                "acknowledged_by", "pod", "container", "attributes"
+                "acknowledged_by", "attributes"
             ])
 
         print(f"  ✓ Inserted {len(rows):,} incidents")

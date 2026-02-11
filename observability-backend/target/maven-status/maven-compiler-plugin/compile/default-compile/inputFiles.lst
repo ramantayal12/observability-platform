@@ -38,6 +38,7 @@
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/ObservabilityApplication.java
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/SpanResponse.java
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/UserRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/config/DataSourceConfig.java
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/MockApiController.java
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/ContextResponse.java
 /Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/MetricRequest.java

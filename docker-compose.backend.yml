@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL - Relational data (users, teams, configs)
   mysql:

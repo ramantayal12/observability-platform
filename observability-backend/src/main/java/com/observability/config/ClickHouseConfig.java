@@ -1,6 +1,7 @@
 package com.observability.config;
 
 import com.clickhouse.jdbc.ClickHouseDataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +14,7 @@ import java.util.Properties;
 /**
  * ClickHouse configuration for high-performance time-series data storage.
  * Used for metrics, logs, traces, and spans.
+ * Note: This is NOT the primary datasource - MySQL is used for JPA entities.
  */
 @Configuration
 public class ClickHouseConfig {
@@ -41,7 +43,7 @@ public class ClickHouseConfig {
     @Bean(name = "clickHouseDataSource")
     public DataSource clickHouseDataSource() throws SQLException {
         String url = String.format("jdbc:clickhouse://%s:%d/%s", host, port, database);
-        
+
         Properties properties = new Properties();
         properties.setProperty("user", user);
         properties.setProperty("password", password);
@@ -49,12 +51,12 @@ public class ClickHouseConfig {
         properties.setProperty("connection_timeout", String.valueOf(connectionTimeout));
         properties.setProperty("compress", "true");
         properties.setProperty("decompress", "true");
-        
+
         return new ClickHouseDataSource(url, properties);
     }
 
     @Bean(name = "clickHouseJdbcTemplate")
-    public JdbcTemplate clickHouseJdbcTemplate(DataSource clickHouseDataSource) {
+    public JdbcTemplate clickHouseJdbcTemplate(@Qualifier("clickHouseDataSource") DataSource clickHouseDataSource) {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(clickHouseDataSource);
         jdbcTemplate.setQueryTimeout(60); // 60 seconds query timeout
         return jdbcTemplate;
