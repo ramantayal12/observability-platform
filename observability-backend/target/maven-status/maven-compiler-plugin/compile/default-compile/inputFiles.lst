@@ -1,100 +1,100 @@
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/OrganizationService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/ContextResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/exception/ValidationException.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/exception/ObservabilityException.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/MetricRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/security/TenantFilter.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/mapper/EntityMapper.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/api/DashboardServiceApi.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/UserService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/DashboardController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/model/LogEntry.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/ChartConfigEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/mapper/MetricMapper.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/TraceResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/LogRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/SpanEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/LogResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/security/TenantContext.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/LoginRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/TeamOverviewDataRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/OrganizationController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/SpanRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/exception/ResourceNotFoundException.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/mapper/TraceMapper.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/MockApiController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/AlertResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/response/ApiResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/AuthService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/AlertEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/config/ClickHouseConfig.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/model/Trace.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/OrganizationRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/CacheService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/api/TraceServiceApi.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/api/MetricServiceApi.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/ServiceRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/ApiEndpointRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseSpansRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/SpanResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/UserRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/TraceEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/TeamRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/MetricEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/TraceService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/ObservabilityApplication.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/MetricRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/AlertRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/UserResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/security/JwtTokenProvider.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/AuthController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/TeamDataService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/OrganizationEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/TeamEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/exception/GlobalExceptionHandler.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/mapper/LogMapper.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/ClickHouseDataController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/ClickHouseDataService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/DashboardOverviewResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/LogService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/LogEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/config/SecurityConfig.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/ServiceEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/OrganizationResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/model/MetricData.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/DataCleanupService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/MetricService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/DashboardService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/UserTeamEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/AlertController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseLogsRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/LogRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/ServiceResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/UserEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/AuthResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/TeamResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/request/TimeRangeRequest.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/TraceRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/ChartConfigRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/api/LogServiceApi.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/UserController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/TeamService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/exception/AccessDeniedException.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/ApiEndpointEntity.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/TeamDataController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/response/ErrorDetail.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/dto/response/MetricResponse.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/UserTeamRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/AlertService.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseIncidentsRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/DataIngestionController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/AlertRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/OtelReceiverController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/controller/TeamController.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/service/MockDataGenerator.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/mapper/SpanMapper.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/common/response/PageInfo.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/model/Span.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/repository/SpanRepository.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/config/RedisConfig.java
-/Users/rtayal/untitled folder/observability-backend/src/main/java/com/observability/entity/TeamOverviewDataEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/config/SecurityConfig.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/SpanRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/exception/ObservabilityException.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/UserController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/ServiceEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/exception/AccessDeniedException.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/MetricService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/AlertRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/TraceResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/ChartConfigEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/ClickHouseDataService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/LoginRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/UserTeamEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/ClickHouseDataController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseSpansRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseLogsRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/UserEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/response/ErrorDetail.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/LogResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/DashboardOverviewResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/TraceEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/AlertRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/exception/ValidationException.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/mapper/LogMapper.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/security/JwtTokenProvider.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/DataCleanupService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/AlertEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/OrganizationEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/api/MetricServiceApi.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/model/Span.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/CacheService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/TeamEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/model/MetricData.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/UserResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/AuthService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/AlertService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/TraceRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/ObservabilityApplication.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/SpanResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/UserRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/MockApiController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/ContextResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/MetricRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/DashboardController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/AlertResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/LogService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/AlertController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/TeamRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/MetricEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/api/LogServiceApi.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/MetricRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/ServiceResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/TeamDataService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/config/RedisConfig.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/TimeRangeRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/ServiceRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/AuthController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/exception/GlobalExceptionHandler.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/OrganizationService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/model/LogEntry.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/ApiEndpointEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/security/TenantContext.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/DataIngestionController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/TeamService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/DashboardService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/mapper/TraceMapper.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/api/DashboardServiceApi.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/ApiEndpointRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/MetricResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/SpanEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/TeamOverviewDataRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/OtelReceiverController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/TraceService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/OrganizationResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/LogRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/api/TraceServiceApi.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/OrganizationRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/TeamDataController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/ChartConfigRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/response/ApiResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/TeamResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/response/AuthResponse.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/config/ClickHouseConfig.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/TeamOverviewDataEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/exception/ResourceNotFoundException.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/dto/request/LogRequest.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/mapper/EntityMapper.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/SpanRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/UserService.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/mapper/SpanMapper.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/security/TenantFilter.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/service/MockDataGenerator.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/OrganizationController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/controller/TeamController.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/common/response/PageInfo.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/UserTeamRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/mapper/MetricMapper.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/repository/clickhouse/ClickHouseIncidentsRepository.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/entity/LogEntity.java
+/Users/rtayal/Desktop/observability-platform/observability-backend/src/main/java/com/observability/model/Trace.java

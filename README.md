@@ -1,89 +1,122 @@
 # ObserveX - Observability Platform
 
-A multi-tenant observability platform with metrics, traces, logs, and real-time dashboards.
+Scalable, multi-tenant observability platform with metrics, traces, logs, and real-time dashboards.
 
-## Quick Start
+**Stack:** Spring Boot, ClickHouse, Redis, MySQL, Vanilla JavaScript
 
-### 1. Start MySQL Database
-Ensure MySQL is running with database `metabase` (user: `metabase`, password: `metabasepass`).
+---
 
-### 2. Generate Sample Data
+## 🚀 Quick Start (5 Minutes)
+
+### Prerequisites
 ```bash
-cd scripts
-python3 -m venv venv
-source venv/bin/activate
-pip install mysql-connector-python
-python3 data_generator.py --clear
+brew install colima docker docker-compose
 ```
 
-### 3. Start Backend
+### Start Everything
 ```bash
-cd observability-backend
-mvn spring-boot:run
+./start-colima.sh          # Start Colima (30 sec)
+./start-backend.sh         # Start backend services (2-3 min first time)
+./generate-data.sh         # Generate sample data (1 min)
+./start-frontend.sh        # Start frontend (10 sec)
 ```
-Backend runs on `http://localhost:8080`
 
-### 4. Open Frontend
+### Access Application
+**🌐 http://localhost:13000/pages/login.html**
+
+**Login:** `demo@observex.io` / any password
+
+### Stop Everything
 ```bash
-cd observability-frontend
-python3 -m http.server 3000
-```
-Open `http://localhost:3000/pages/login.html`
-
-### 5. Demo Credentials
-
-| Email | Password | Description |
-|-------|----------|-------------|
-| `demo@observex.io` | any password | Demo user with access to all teams |
-
-After login, you can switch between teams using the team selector in the top navigation.
-
-## Project Structure
-
-```
-├── observability-backend/    # Spring Boot API (Java 17)
-├── observability-frontend/   # Web dashboard (Vanilla JS + Chart.js)
-└── scripts/
-    └── data_generator.py     # Python script to generate all mock data
+./stop-all.sh
+colima stop
 ```
 
-## Data Generator
+---
 
-The Python script generates all observability data:
+## 📊 Services
 
-| Data | Description |
-|------|-------------|
-| Organizations | Multi-tenant org structure |
-| Teams | Platform, Backend, Frontend teams |
-| Users | Demo user with team access |
-| Services | 4 services per team |
-| Traces & Spans | Distributed tracing data |
-| Logs | Application logs |
-| Metrics | Performance metrics |
-| Chart Configs | Dashboard chart settings |
-| API Endpoints | Team-specific endpoints |
+| Service | Port | Purpose |
+|---------|------|---------|
+| Frontend (NGINX) | 13000 | Web UI + Reverse Proxy |
+| Backend (Spring Boot) | 18080 | REST API |
+| MySQL | 13306 | Users, Teams, Configs |
+| ClickHouse HTTP | 18123 | Metrics, Logs, Traces |
+| ClickHouse TCP | 19000 | Native Protocol |
+| Redis | 16379 | Cache |
 
+---
+
+## 🔧 Useful Commands
+
+### View Logs
 ```bash
-# Regenerate all data
-python3 data_generator.py --clear
-
-# Custom database connection
-python3 data_generator.py --host localhost --port 3306 --database metabase
+docker-compose -f docker-compose.backend.yml logs -f backend
 ```
 
-## API Endpoints
+### Restart Backend
+```bash
+docker-compose -f docker-compose.backend.yml restart backend
+```
 
-All endpoints require `X-User-Id` and `X-Team-Id` headers for team access validation.
+### Access Databases
+```bash
+# MySQL
+docker exec -it observex-mysql mysql -u observex -pobservex123 observex
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/teams/{id}/data/overview` | Dashboard overview data |
-| `GET /api/teams/{id}/data/metrics` | Metrics with chart configs |
-| `GET /api/teams/{id}/data/logs` | Log entries |
-| `GET /api/teams/{id}/data/traces` | Distributed traces |
+# ClickHouse
+docker exec -it observex-clickhouse clickhouse-client --user observex --password observex123
 
-## Technologies
+# Redis
+docker exec -it observex-redis redis-cli
+```
 
-- **Backend**: Spring Boot 3.2, Java 17, MySQL, JPA/Hibernate
-- **Frontend**: Vanilla JavaScript, Chart.js
-- **Data**: Python 3 for data generation
+### Check Health
+```bash
+curl http://localhost:18080/actuator/health
+```
+
+### Test Setup
+```bash
+./test-setup.sh
+```
+
+### Clean Slate
+```bash
+./stop-all.sh
+docker volume rm observability-platform_mysql_data observability-platform_clickhouse_data observability-platform_redis_data
+colima delete
+```
+
+---
+
+## 🐛 Troubleshooting
+
+**Colima won't start? (VZ driver error)**
+```bash
+colima delete --force
+./start-colima.sh
+```
+
+**Docker SSL certificate errors? (Corporate proxy/VPN)**
+```bash
+# Disconnect from VPN and try again
+# Or use mobile hotspot / different network
+```
+
+**Backend won't start?**
+```bash
+docker-compose -f docker-compose.backend.yml logs backend
+```
+
+**Port conflicts?**
+```bash
+lsof -i :18080  # Check what's using backend port
+lsof -i :13000  # Check what's using frontend port
+```
+
+**Need more resources?**
+```bash
+colima stop
+colima start --cpu 4 --memory 10 --disk 50
+```

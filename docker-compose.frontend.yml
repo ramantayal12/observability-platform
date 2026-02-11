@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  # NGINX - Reverse proxy for frontend + backend
+  frontend:
+    image: nginx:alpine
+    container_name: observex-frontend
+    ports:
+      - "13000:80"  # Custom port 13000
+    volumes:
+      - ./observability-frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/pages/login.html"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - observex-network
+    restart: unless-stopped
+
+networks:
+  observex-network:
+    external: true
+
