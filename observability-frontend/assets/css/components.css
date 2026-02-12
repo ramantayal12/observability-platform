@@ -391,6 +391,12 @@
     margin-bottom: var(--space-lg);
 }
 
+.api-endpoints-section .section-header {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border-primary);
+    margin-bottom: 0;
+}
+
 .section-subtitle {
     font-size: 13px;
     color: var(--text-tertiary);
@@ -487,7 +493,7 @@
 
 /* ==================== Enterprise API Endpoints Table ==================== */
 .api-endpoints-section.enterprise {
-    overflow: hidden;
+    overflow: visible;
 }
 
 .api-endpoints-table {
@@ -518,6 +524,7 @@
 }
 
 .api-table-body {
+    min-height: 60px;
     max-height: 280px;
     overflow-y: auto;
 }
@@ -608,18 +615,10 @@
     overflow: hidden;
 }
 
-.section-header {
+.activity-section .section-header {
     padding: var(--space-lg);
     border-bottom: 1px solid var(--border-primary);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
+    margin-bottom: 0;
 }
 
 .section-link {
@@ -1220,7 +1219,7 @@
     height: 100vh;
     background: var(--bg-secondary);
     border-left: 1px solid var(--border-primary);
-    z-index: 1000;
+    z-index: 200;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -3017,7 +3016,7 @@
     background: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
     box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
+    z-index: 200;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -3608,7 +3607,7 @@
     background: var(--bg-secondary);
     border-left: 1px solid var(--border-color);
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
-    z-index: 100;
+    z-index: 200;
     transition: right 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -4100,7 +4099,7 @@
     left: 280px;
     right: 20px;
     bottom: 20px;
-    z-index: 1000;
+    z-index: 150;
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
@@ -4214,6 +4213,10 @@
     color: var(--text-tertiary);
 }
 
+.team-selector {
+    position: relative;
+}
+
 .team-selector.open .team-chevron {
     transform: rotate(180deg);
 }
@@ -4227,7 +4230,7 @@
     border: 1px solid var(--border-primary);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-lg);
-    z-index: 1000;
+    z-index: 1001;
     display: none;
     overflow: hidden;
 }

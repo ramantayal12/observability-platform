@@ -1,72 +1,4 @@
 services:
-  # MySQL - Relational data (users, teams, configs)
-  mysql:
-    image: mysql:8.0
-    container_name: observex-mysql
-    ports:
-      - "13306:3306"  # Custom port 13306
-    volumes:
-      - mysql_data:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=root123
-      - MYSQL_DATABASE=observex
-      - MYSQL_USER=observex
-      - MYSQL_PASSWORD=observex123
-    command: --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - observex-network
-
-  # ClickHouse - High-performance columnar database for metrics, logs, traces
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.1
-    container_name: observex-clickhouse
-    ports:
-      - "18123:8123"  # Custom HTTP port 18123
-      - "19000:9000"  # Custom TCP port 19000
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - ./scripts/clickhouse-init:/docker-entrypoint-initdb.d
-    environment:
-      - CLICKHOUSE_DB=observex
-      - CLICKHOUSE_USER=observex
-      - CLICKHOUSE_PASSWORD=observex123
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-    healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - observex-network
-
-  # Redis - Caching layer for real-time aggregations
-  redis:
-    image: redis:7-alpine
-    container_name: observex-redis
-    ports:
-      - "16379:6379"  # Custom port 16379
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - observex-network
-
   # Spring Boot Backend
   backend:
     build:
@@ -97,26 +29,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-    depends_on:
-      mysql:
-        condition: service_healthy
-      clickhouse:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - observex-network
     restart: unless-stopped
 
-volumes:
-  mysql_data:
-    driver: local
-  clickhouse_data:
-    driver: local
-  redis_data:
-    driver: local
-
 networks:
   observex-network:
-    driver: bridge
+    external: true
 

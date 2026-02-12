@@ -16,8 +16,14 @@ fi
 
 # Stop backend
 if [ -f "docker-compose.backend.yml" ]; then
-    echo "Stopping backend services..."
+    echo "Stopping backend..."
     docker-compose -f docker-compose.backend.yml down 2>/dev/null || true
+fi
+
+# Stop databases
+if [ -f "docker-compose.databases.yml" ]; then
+    echo "Stopping databases..."
+    docker-compose -f docker-compose.databases.yml down 2>/dev/null || true
 fi
 
 # Remove network
@@ -27,10 +33,12 @@ docker network rm observex-network 2>/dev/null || true
 echo ""
 echo "✅ All services stopped!"
 echo ""
+echo "Note: Database data is preserved in Docker volumes."
+echo ""
 echo "To stop Colima:"
 echo "  colima stop"
 echo ""
-echo "To remove all data volumes:"
-echo "  docker volume rm observability-platform_mysql_data observability-platform_clickhouse_data observability-platform_redis_data"
+echo "To remove all data volumes (⚠️  DESTRUCTIVE):"
+echo "  docker-compose -f docker-compose.databases.yml down -v"
 echo ""
 

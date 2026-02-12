@@ -24,7 +24,10 @@ brew install colima docker docker-compose
 ### Access Application
 **🌐 http://localhost:13000/pages/login.html**
 
-**Login:** `demo@observex.io` / any password
+**Login Credentials:**
+- **Email:** `demo@observex.io`
+- **Password:** Any password (e.g., `demo`, `password`, or leave blank)
+- **Note:** Demo user has no password hash, so any password will work
 
 ### Stop Everything
 ```bash
@@ -48,6 +51,11 @@ colima stop
 ---
 
 ## 🔧 Useful Commands
+
+### Verify Login
+```bash
+./verify-login.sh  # Check if demo user exists and login works
+```
 
 ### View Logs
 ```bash
@@ -76,11 +84,6 @@ docker exec -it observex-redis redis-cli
 curl http://localhost:18080/actuator/health
 ```
 
-### Test Setup
-```bash
-./test-setup.sh
-```
-
 ### Clean Slate
 ```bash
 ./stop-all.sh
@@ -91,6 +94,34 @@ colima delete
 ---
 
 ## 🐛 Troubleshooting
+
+**Network error on login page?**
+```bash
+# The frontend needs to be rebuilt to use the correct API endpoint
+./restart-frontend.sh
+
+# Or manually:
+docker-compose -f docker-compose.frontend.yml down
+docker-compose -f docker-compose.frontend.yml build --no-cache
+docker-compose -f docker-compose.frontend.yml up -d
+```
+
+**Login not working?**
+```bash
+# Verify login setup
+./verify-login.sh
+
+# Common fixes:
+# 1. Make sure you ran the data generation script
+./generate-data.sh
+
+# 2. Check backend logs for errors
+docker-compose -f docker-compose.backend.yml logs backend
+
+# 3. Verify demo user exists in database
+docker exec observex-mysql mysql -u observex -pobservex123 observex \
+  -e "SELECT email, name, role, active FROM users WHERE email='demo@observex.io';"
+```
 
 **Colima won't start? (VZ driver error)**
 ```bash

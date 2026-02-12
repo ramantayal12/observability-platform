@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>API Test - ObserveX</title>
+    <style>
+        body { font-family: monospace; background: #0a0a0a; color: #00ff00; padding: 20px; }
+        .test-section { background: #1a1a1a; border: 1px solid #333; padding: 20px; margin: 20px 0; }
+        button { background: #00ff00; color: #000; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; }
+        .result { background: #000; border: 1px solid #333; padding: 15px; margin-top: 10px; white-space: pre-wrap; }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+    </style>
+</head>
+<body>
+    <h1>🔧 ObserveX API Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Check Config</h2>
+        <button onclick="checkConfig()">Check</button>
+        <div id="config-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Login</h2>
+        <button onclick="testLogin()">Test Login</button>
+        <div id="login-result" class="result"></div>
+    </div>
+
+    <script src="../config/constants.js"></script>
+    <script>
+        function checkConfig() {
+            const el = document.getElementById('config-result');
+            el.innerHTML = `BASE_URL: ${AppConfig.API.BASE_URL}\n`;
+            el.innerHTML += `window.API_CONFIG.BASE_URL: ${window.API_CONFIG?.BASE_URL}\n\n`;
+            
+            if (AppConfig.API.BASE_URL.includes('localhost:8080')) {
+                el.innerHTML += '<span class="error">❌ ERROR: Still using localhost:8080!\nDo hard refresh (Ctrl+Shift+R)</span>';
+            } else {
+                el.innerHTML += '<span class="success">✅ Config is correct!</span>';
+            }
+        }
+
+        async function testLogin() {
+            const el = document.getElementById('login-result');
+            el.innerHTML = 'Testing...\n';
+            
+            try {
+                const url = '/api/auth/login';
+                el.innerHTML += `URL: ${window.location.origin}${url}\n\n`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'demo@observex.io', password: 'test' })
+                });
+                
+                el.innerHTML += `Status: ${response.status}\n\n`;
+                const data = await response.json();
+                el.innerHTML += JSON.stringify(data, null, 2);
+                
+                if (data.success) {
+                    el.innerHTML += '\n\n<span class="success">✅ Login works!</span>';
+                }
+            } catch (error) {
+                el.innerHTML += `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        window.addEventListener('load', checkConfig);
+    </script>
+</body>
+</html>
+

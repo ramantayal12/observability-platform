@@ -32,9 +32,14 @@ public class LogRequest {
     private String logger;
     private String traceId;
     private String spanId;
+
+    // Infrastructure attributes
+    private String host;
     private String pod;
     private String container;
-    private String node;
+    private String thread;
+    private String exception;
+
     private Map<String, String> attributes;
 
     @Positive(message = "Timestamp must be positive")

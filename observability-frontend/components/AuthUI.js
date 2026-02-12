@@ -67,9 +67,15 @@ class AuthUI {
     /**
      * Handle logout
      */
-    handleLogout() {
-        this.authService.logout();
-        window.location.href = 'login.html';
+    async handleLogout() {
+        await this.authService.logout();
+        // Redirect to login page - handle both root and pages directory
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/pages/')) {
+            window.location.href = 'login.html';
+        } else {
+            window.location.href = 'pages/login.html';
+        }
     }
 }
 

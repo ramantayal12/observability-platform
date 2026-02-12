@@ -79,11 +79,13 @@ class DataGenerator:
         cursor.close()
 
     def clear_all_data(self):
-        """Clear all existing data from tables."""
-        print("\n🗑️  Clearing existing data...")
+        """Clear all existing data from MySQL tables.
+        Note: Time-series data (spans, logs) are in ClickHouse, not MySQL.
+        """
+        print("\n🗑️  Clearing existing MySQL data...")
         tables = [
-            "spans", "traces", "logs", "metrics", "services", "alerts",
-            "chart_configs", "api_endpoints", "user_teams", "users", "teams", "organizations"
+            "services", "alerts", "chart_configs", "api_endpoints",
+            "user_teams", "users", "teams", "organizations"
         ]
         for table in tables:
             try:
@@ -91,6 +93,7 @@ class DataGenerator:
                 print(f"  ✓ Cleared {table}")
             except Error:
                 pass  # Table might not exist yet
+        print("  ℹ️  Note: ClickHouse data (spans, logs, incidents) not affected")
 
     def ensure_tables(self):
         """Ensure all required tables exist."""
@@ -201,227 +204,11 @@ class DataGenerator:
 
         return services
 
-
-    # ==================== TRACES & SPANS ====================
-    def create_traces_and_spans(self, org_id: int, teams: List[Dict], services: Dict[int, List[Dict]], num_traces: int = 50):
-        """Create traces and spans for each team."""
-        print("\n🔍 Creating traces and spans...")
-
-        operations = ["GET /api/users", "POST /api/orders", "GET /api/products", "PUT /api/config", "DELETE /api/cache"]
-
-        for team in teams:
-            team_services = services.get(team["id"], [])
-            if not team_services:
-                continue
-
-            traces_data = []
-            spans_data = []
-
-            for _ in range(num_traces):
-                trace_id = uuid.uuid4().hex
-                start_time = datetime.now() - timedelta(hours=random.randint(1, 24))
-                duration = random.randint(50, 500)
-                end_time = start_time + timedelta(milliseconds=duration)
-                root_service = random.choice(team_services)
-                status = random.choice(["SUCCESS", "SUCCESS", "SUCCESS", "ERROR"])
-                span_count = random.randint(3, 8)
-
-                traces_data.append((
-                    org_id, team["id"], trace_id, start_time, end_time, duration,
-                    root_service["name"], status, random.choice(operations), span_count
-                ))
-
-                # Create spans for this trace
-                parent_span_id = None
-                span_start = start_time
-                for i in range(span_count):
-                    span_id = uuid.uuid4().hex[:16]
-                    span_duration = duration // span_count + random.randint(-10, 10)
-                    span_end = span_start + timedelta(milliseconds=max(1, span_duration))
-                    svc = team_services[i % len(team_services)]
-
-                    spans_data.append((
-                        org_id, team["id"], span_id, trace_id, parent_span_id,
-                        random.choice(operations), span_start, span_end, max(1, span_duration),
-                        svc["name"], "OK" if status == "SUCCESS" else random.choice(["OK", "ERROR"]),
-                        random.choice(["SERVER", "CLIENT", "INTERNAL"]),
-                        f"pod-{random.randint(1,5)}", f"container-{svc['name']}", f"node-{random.randint(1,3)}",
-                        json.dumps({"http.method": "GET", "http.status_code": 200})
-                    ))
-                    parent_span_id = span_id
-                    span_start = span_end
-
-            # Batch insert traces
-            self.execute_many("""
-                INSERT INTO traces (organization_id, team_id, trace_id, start_time, end_time, duration,
-                                   service_name, status, root_operation, span_count)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, traces_data)
-
-            # Batch insert spans
-            self.execute_many("""
-                INSERT INTO spans (organization_id, team_id, span_id, trace_id, parent_span_id,
-                                  operation_name, start_time, end_time, duration, service_name, status,
-                                  kind, pod, container, node, attributes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, spans_data)
-
-            print(f"  ✓ Created {len(traces_data)} traces and {len(spans_data)} spans for {team['name']}")
-
-    # ==================== LOGS ====================
-    def create_logs(self, org_id: int, teams: List[Dict], services: Dict[int, List[Dict]], num_logs: int = 200):
-        """Create log entries for each team."""
-        print("\n📝 Creating logs...")
-
-        log_messages = [
-            # INFO messages
-            ("INFO", "Request processed successfully in {duration}ms"),
-            ("INFO", "User {user_id} authenticated via OAuth2"),
-            ("INFO", "Cache hit for key: {cache_key}"),
-            ("INFO", "Database query completed in {duration}ms, rows affected: {rows}"),
-            ("INFO", "Health check passed - all dependencies healthy"),
-            ("INFO", "Scheduled job {job_name} completed successfully"),
-            ("INFO", "Connection pool stats: active={active}, idle={idle}, waiting={waiting}"),
-            ("INFO", "Message published to queue {queue_name}"),
-            ("INFO", "API response: status={status}, latency={duration}ms"),
-            ("INFO", "Feature flag {flag_name} evaluated to {value}"),
-            # WARN messages
-            ("WARN", "Slow query detected: {duration}ms exceeds threshold of 500ms"),
-            ("WARN", "Rate limit approaching: {current}/{limit} requests"),
-            ("WARN", "Memory usage at {percent}% - approaching threshold"),
-            ("WARN", "Retry attempt {attempt}/3 for external service call"),
-            ("WARN", "Circuit breaker {name} is half-open"),
-            ("WARN", "Deprecated API endpoint called: {endpoint}"),
-            ("WARN", "Connection pool exhausted, waiting for available connection"),
-            ("WARN", "Cache miss rate elevated: {rate}%"),
-            # ERROR messages
-            ("ERROR", "Connection timeout after {duration}ms to {host}:{port}"),
-            ("ERROR", "Failed to process request: {error_message}"),
-            ("ERROR", "Database connection failed: {error_code}"),
-            ("ERROR", "Authentication failed for user {user_id}: invalid credentials"),
-            ("ERROR", "Circuit breaker {name} is OPEN - failing fast"),
-            ("ERROR", "Message processing failed: {error_message}"),
-            ("ERROR", "External API returned {status}: {error_message}"),
-            ("ERROR", "Unhandled exception in {method}: {error_type}"),
-            # DEBUG messages
-            ("DEBUG", "Processing request payload: {bytes} bytes"),
-            ("DEBUG", "Executing query: SELECT * FROM {table} WHERE id = {id}"),
-            ("DEBUG", "HTTP request: {method} {path} - headers: {headers}"),
-            ("DEBUG", "Serializing response object: {type}"),
-        ]
-
-        # Template values for log messages
-        def format_log_message(template):
-            return template.format(
-                duration=random.randint(10, 2000),
-                user_id=f"user-{random.randint(1000, 9999)}",
-                cache_key=f"cache:{random.choice(['user', 'session', 'config', 'data'])}:{uuid.uuid4().hex[:8]}",
-                rows=random.randint(1, 1000),
-                job_name=random.choice(["cleanup", "sync", "report", "backup", "index"]),
-                active=random.randint(5, 20),
-                idle=random.randint(0, 10),
-                waiting=random.randint(0, 5),
-                queue_name=random.choice(["orders", "notifications", "events", "tasks"]),
-                status=random.choice([200, 201, 204]),
-                flag_name=random.choice(["new_ui", "beta_feature", "dark_mode", "v2_api"]),
-                value=random.choice(["true", "false"]),
-                current=random.randint(80, 95),
-                limit=100,
-                percent=random.randint(75, 95),
-                attempt=random.randint(1, 3),
-                name=random.choice(["payment-service", "inventory-service", "shipping-service"]),
-                endpoint=random.choice(["/api/v1/legacy", "/api/old/users", "/api/deprecated"]),
-                rate=random.randint(20, 40),
-                host=random.choice(["db-primary", "cache-01", "api-gateway"]),
-                port=random.choice([3306, 6379, 5432, 8080]),
-                error_message=random.choice(["timeout", "connection refused", "invalid response", "rate limited"]),
-                error_code=random.choice(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND"]),
-                error_type=random.choice(["NullPointerException", "IOException", "TimeoutException"]),
-                method=random.choice(["GET", "POST", "PUT", "DELETE"]),
-                path=random.choice(["/api/users", "/api/orders", "/api/products"]),
-                headers=random.randint(5, 15),
-                bytes=random.randint(100, 50000),
-                table=random.choice(["users", "orders", "products", "sessions"]),
-                id=random.randint(1, 100000),
-                type=random.choice(["UserDTO", "OrderResponse", "ProductList"])
-            )
-
-        for team in teams:
-            team_services = services.get(team["id"], [])
-            if not team_services:
-                continue
-
-            logs_data = []
-            for _ in range(num_logs):
-                level, message_template = random.choice(log_messages)
-                svc = random.choice(team_services)
-                timestamp = datetime.now() - timedelta(minutes=random.randint(1, 1440))
-
-                # Format the message with realistic values
-                formatted_message = format_log_message(message_template)
-
-                logs_data.append((
-                    org_id, team["id"], svc["name"], level, formatted_message,
-                    timestamp, f"{svc['name']}.main", uuid.uuid4().hex if random.random() > 0.5 else None,
-                    uuid.uuid4().hex[:16] if random.random() > 0.5 else None,
-                    f"pod-{svc['name']}-{random.randint(1,5)}", f"container-{svc['name']}", f"node-{random.randint(1,3)}",
-                    json.dumps({"request_id": uuid.uuid4().hex[:8], "trace_id": uuid.uuid4().hex[:16]})
-                ))
-
-            self.execute_many("""
-                INSERT INTO logs (organization_id, team_id, service_name, level, message, timestamp,
-                                 logger, trace_id, span_id, pod, container, node, attributes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, logs_data)
-
-            print(f"  ✓ Created {len(logs_data)} logs for {team['name']}")
-
-    # ==================== METRICS ====================
-    def create_metrics(self, org_id: int, teams: List[Dict], services: Dict[int, List[Dict]], num_points: int = 100):
-        """Create metric data points for each team."""
-        print("\n📊 Creating metrics...")
-
-        metric_types = ["latency", "throughput", "error_rate", "cpu_usage", "memory_usage"]
-        endpoints = ["/api/users", "/api/orders", "/api/products", "/api/config", "/api/health"]
-
-        for team in teams:
-            team_services = services.get(team["id"], [])
-            if not team_services:
-                continue
-
-            metrics_data = []
-            for _ in range(num_points):
-                svc = random.choice(team_services)
-                metric_name = random.choice(metric_types)
-                timestamp = datetime.now() - timedelta(minutes=random.randint(1, 1440))
-
-                # Generate realistic values based on metric type
-                if metric_name == "latency":
-                    value = random.uniform(10, 500)
-                elif metric_name == "throughput":
-                    value = random.uniform(100, 1000)
-                elif metric_name == "error_rate":
-                    value = random.uniform(0, 5)
-                elif metric_name == "cpu_usage":
-                    value = random.uniform(10, 90)
-                else:
-                    value = random.uniform(20, 80)
-
-                metrics_data.append((
-                    org_id, team["id"], svc["name"], metric_name, random.choice(endpoints),
-                    value, timestamp, random.choice(["GET", "POST", "PUT"]),
-                    random.choice([200, 200, 200, 201, 400, 500]),
-                    f"pod-{random.randint(1,5)}", f"container-{svc['name']}", f"node-{random.randint(1,3)}",
-                    "request"
-                ))
-
-            self.execute_many("""
-                INSERT INTO metrics (organization_id, team_id, service_name, metric_name, endpoint,
-                                    value, timestamp, method, status_code, pod, container, node, operation_type)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, metrics_data)
-
-            print(f"  ✓ Created {len(metrics_data)} metrics for {team['name']}")
+    # ==================== TIME-SERIES DATA ====================
+    # NOTE: Traces, logs, and metrics are now stored in ClickHouse, not MySQL.
+    # Use clickhouse_data_generator.py to generate time-series data.
+    # The methods create_traces_and_spans(), create_logs(), and create_metrics()
+    # have been removed as they tried to insert into non-existent MySQL tables.
 
     # ==================== CHART CONFIGS ====================
     def create_chart_configs(self, teams: List[Dict]):
@@ -605,7 +392,8 @@ class DataGenerator:
             print(f"   • {8 * len(teams)} chart configs")
             print(f"   • {6 * len(teams)} API endpoints")
             print(f"   • {10 * len(teams)} alerts")
-            print("\n📈 Note: Time-series data (traces, logs, metrics) will be generated in ClickHouse")
+            print("\n📊 Note: Time-series data (traces, logs, metrics) will be generated in ClickHouse")
+            print("   Run clickhouse_data_generator.py to populate ClickHouse")
             print("\n🔑 Login credentials:")
             print("   Email: demo@observex.io")
             print("   Password: (any password)")

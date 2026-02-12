@@ -60,14 +60,34 @@ class TeamSelector {
             // Store in localStorage for persistence
             if (this.currentTeam) {
                 localStorage.setItem('observability_current_team', JSON.stringify(this.currentTeam));
+                console.log('[TeamSelector] Loaded teams:', this.teams.length, 'Current:', this.currentTeam.name);
+            } else {
+                console.warn('[TeamSelector] No current team available');
             }
         } catch (error) {
-            console.error('Failed to load context:', error);
-            // Use cached team if available
-            const cached = localStorage.getItem('observability_current_team');
-            if (cached) {
-                this.currentTeam = JSON.parse(cached);
+            console.error('[TeamSelector] Failed to load context:', error);
+            // Clear invalid cache on error
+            localStorage.removeItem('observability_current_team');
+            this.currentTeam = null;
+            this.teams = [];
+        }
+    }
+
+    /**
+     * Refresh teams from backend
+     */
+    async refreshTeams() {
+        try {
+            const tenantService = window.TenantService?.getInstance();
+            if (tenantService) {
+                await tenantService.init();
+                this.teams = tenantService.getTeams() || [];
+                this.currentTeam = tenantService.getCurrentTeam() || (this.teams.length > 0 ? this.teams[0] : null);
+                console.log('[TeamSelector] Refreshed teams:', this.teams.map(t => `${t.name} (ID: ${t.id})`).join(', '));
+                this.render();
             }
+        } catch (error) {
+            console.error('[TeamSelector] Failed to refresh teams:', error);
         }
     }
     

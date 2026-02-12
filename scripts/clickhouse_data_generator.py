@@ -5,6 +5,8 @@ ClickHouse Data Generator for ObserveX (Simplified Schema)
 Generates data for 3 tables: spans, logs, incidents
 Metrics are derived from spans via materialized views.
 
+Uses REST API ingestion endpoints instead of direct ClickHouse insertion.
+
 Usage:
     python clickhouse_data_generator.py --clear  # Clear and regenerate
     python clickhouse_data_generator.py          # Generate new data
@@ -13,6 +15,7 @@ Usage:
 import argparse
 import random
 import uuid
+import requests
 from datetime import datetime, timedelta
 from typing import List
 import clickhouse_connect
@@ -48,12 +51,16 @@ INFO_MESSAGES = [
 class ClickHouseDataGenerator:
     """Generates observability data for ClickHouse (simplified 3-table schema)."""
 
-    def __init__(self, host: str, port: int, database: str, user: str, password: str):
+    def __init__(self, host: str, port: int, database: str, user: str, password: str,
+                 api_url: str = "http://localhost:13000", auth_token: str = None):
         self.client = clickhouse_connect.get_client(
             host=host, port=port, database=database,
             username=user, password=password
         )
         self.team_ids = []
+        self.api_url = api_url
+        self.auth_token = auth_token
+        self.use_api = auth_token is not None  # Use API if token provided, else direct insertion
 
     def clear_data(self):
         """Clear all data from ClickHouse tables."""
@@ -116,11 +123,56 @@ class ClickHouseDataGenerator:
         print(f"  ✓ Inserted {total_inserted:,} logs")
 
     def _insert_logs(self, rows):
-        self.client.insert("logs", rows, column_names=[
-            "team_id", "timestamp", "level", "service_name", "logger",
-            "message", "trace_id", "span_id", "host", "pod",
-            "container", "thread", "exception", "attributes"
-        ])
+        if self.use_api:
+            self._insert_logs_via_api(rows)
+        else:
+            self.client.insert("logs", rows, column_names=[
+                "team_id", "timestamp", "level", "service_name", "logger",
+                "message", "trace_id", "span_id", "host", "pod",
+                "container", "thread", "exception", "attributes"
+            ])
+
+    def _insert_logs_via_api(self, rows):
+        """Insert logs via REST API ingestion endpoint."""
+        logs_payload = []
+        for row in rows:
+            log_entry = {
+                "serviceName": row[3],
+                "level": row[2],
+                "message": row[5],
+                "logger": row[4],
+                "traceId": row[6] if row[6] else None,
+                "spanId": row[7] if row[7] else None,
+                "host": row[8],
+                "pod": row[9],
+                "container": row[10],
+                "thread": row[11],
+                "exception": row[12],
+                "attributes": row[13],
+                "timestamp": int(row[1].timestamp() * 1000)  # Convert to milliseconds
+            }
+            logs_payload.append(log_entry)
+
+        # Send in batches of 1000
+        batch_size = 1000
+        for i in range(0, len(logs_payload), batch_size):
+            batch = logs_payload[i:i + batch_size]
+            try:
+                response = requests.post(
+                    f"{self.api_url}/api/ingest/logs",
+                    json=batch,
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                    timeout=30
+                )
+                response.raise_for_status()
+            except Exception as e:
+                print(f"  ⚠ API ingestion failed, falling back to direct insertion: {e}")
+                # Fallback to direct insertion
+                self.client.insert("logs", rows[i:i + batch_size], column_names=[
+                    "team_id", "timestamp", "level", "service_name", "logger",
+                    "message", "trace_id", "span_id", "host", "pod",
+                    "container", "thread", "exception", "attributes"
+                ])
 
     def generate_spans(self, hours_back: int = 24, traces_per_hour: int = 100):
         """Generate spans (unified traces + spans table)."""
@@ -221,13 +273,66 @@ class ClickHouseDataGenerator:
         return spans
 
     def _insert_spans(self, rows):
-        self.client.insert("spans", rows, column_names=[
-            "team_id", "trace_id", "span_id", "parent_span_id", "is_root",
-            "operation_name", "service_name", "span_kind",
-            "start_time", "end_time", "duration_ms", "status", "status_message",
-            "http_method", "http_url", "http_status_code",
-            "host", "pod", "container", "attributes"
-        ])
+        if self.use_api:
+            self._insert_spans_via_api(rows)
+        else:
+            self.client.insert("spans", rows, column_names=[
+                "team_id", "trace_id", "span_id", "parent_span_id", "is_root",
+                "operation_name", "service_name", "span_kind",
+                "start_time", "end_time", "duration_ms", "status", "status_message",
+                "http_method", "http_url", "http_status_code",
+                "host", "pod", "container", "attributes"
+            ])
+
+    def _insert_spans_via_api(self, rows):
+        """Insert spans via REST API ingestion endpoint."""
+        spans_payload = []
+        for row in rows:
+            span_entry = {
+                "traceId": row[1],
+                "spanId": row[2],
+                "parentSpanId": row[3] if row[3] else None,
+                "isRoot": bool(row[4]),
+                "operationName": row[5],
+                "serviceName": row[6],
+                "spanKind": row[7],
+                "startTime": row[8].isoformat() + "Z",
+                "endTime": row[9].isoformat() + "Z",
+                "durationMs": row[10],
+                "status": row[11],
+                "statusMessage": row[12] if row[12] else None,
+                "httpMethod": row[13] if row[13] else None,
+                "httpUrl": row[14] if row[14] else None,
+                "httpStatusCode": row[15] if row[15] else None,
+                "host": row[16],
+                "pod": row[17],
+                "container": row[18],
+                "attributes": row[19]
+            }
+            spans_payload.append(span_entry)
+
+        # Send in batches of 1000
+        batch_size = 1000
+        for i in range(0, len(spans_payload), batch_size):
+            batch = spans_payload[i:i + batch_size]
+            try:
+                response = requests.post(
+                    f"{self.api_url}/api/ingest/spans",
+                    json=batch,
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                    timeout=30
+                )
+                response.raise_for_status()
+            except Exception as e:
+                print(f"  ⚠ API ingestion failed, falling back to direct insertion: {e}")
+                # Fallback to direct insertion
+                self.client.insert("spans", rows[i:i + batch_size], column_names=[
+                    "team_id", "trace_id", "span_id", "parent_span_id", "is_root",
+                    "operation_name", "service_name", "span_kind",
+                    "start_time", "end_time", "duration_ms", "status", "status_message",
+                    "http_method", "http_url", "http_status_code",
+                    "host", "pod", "container", "attributes"
+                ])
 
     def generate_incidents(self, days_back: int = 30, incidents_per_day: int = 5):
         """Generate alert incidents."""
@@ -306,12 +411,15 @@ def main():
     parser.add_argument("--clear", action="store_true", help="Clear existing data")
     parser.add_argument("--hours", type=int, default=24, help="Hours of data to generate")
     parser.add_argument("--team-ids", nargs="+", help="Team UUIDs to use")
+    parser.add_argument("--api-url", default="http://localhost:13000", help="Backend API URL")
+    parser.add_argument("--auth-token", help="JWT authentication token (if provided, uses API ingestion)")
 
     args = parser.parse_args()
 
     generator = ClickHouseDataGenerator(
         host=args.host, port=args.port, database=args.database,
-        user=args.user, password=args.password
+        user=args.user, password=args.password,
+        api_url=args.api_url, auth_token=args.auth_token
     )
 
     # Use provided team IDs or generate sample ones
@@ -323,6 +431,11 @@ def main():
             "11111111-1111-1111-1111-111111111111",
             "22222222-2222-2222-2222-222222222222",
         ])
+
+    if args.auth_token:
+        print("  ℹ️  Using REST API ingestion endpoints")
+    else:
+        print("  ℹ️  Using direct ClickHouse insertion")
 
     generator.run(clear=args.clear, hours_back=args.hours)
 

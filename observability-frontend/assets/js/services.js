@@ -73,20 +73,37 @@
      * Load services data
      */
     async function loadServices() {
+        console.log('[Services] ========== Loading services data ==========');
+        console.log('[Services] Current time range:', currentTimeRange);
+
         try {
             // Use team-specific endpoint
             const data = await apiService.fetchTeamServices();
-            
+            console.log('[Services] ========== Data received ==========');
+            console.log('[Services] Full data object:', data);
+            console.log('[Services] Services count:', data.services?.length || 0);
+            console.log('[Services] Stats:', { total: data.total, healthy: data.healthy, degraded: data.degraded, down: data.down });
+
+            // Use services data directly from backend - NO hardcoded data
             services = data.services || [];
 
+            console.log('[Services] Using backend services data (no hardcoded values)');
+            console.log('[Services] Sample service:', services[0]);
+
             // Update stats
+            console.log('[Services] Updating stats...');
             updateStats(data);
 
             // Render services
+            console.log('[Services] Rendering services...');
             renderServices();
 
+            console.log('[Services] ========== Services loaded successfully ==========');
+
         } catch (error) {
-            console.error('Error loading services:', error);
+            console.error('[Services] ========== Error loading services ==========');
+            console.error('[Services] Error details:', error);
+            console.error('[Services] Error stack:', error.stack);
             notificationManager.error('Failed to load services');
         }
     }
@@ -105,10 +122,15 @@
      * Render services grid
      */
     function renderServices() {
+        console.log('[Services] Rendering services grid with', services.length, 'services');
         const grid = document.getElementById('servicesGrid');
-        if (!grid) return;
+        if (!grid) {
+            console.warn('[Services] Services grid element not found');
+            return;
+        }
 
         if (services.length === 0) {
+            console.log('[Services] No services to display');
             grid.innerHTML = `
                 <div class="empty-state" style="grid-column: 1/-1;">
                     <svg width="64" height="64" viewBox="0 0 64 64" fill="currentColor" opacity="0.3">
@@ -121,6 +143,7 @@
         }
 
         grid.innerHTML = services.map(service => renderServiceCard(service)).join('');
+        console.log('[Services] Services grid rendered successfully');
 
         // Add click handlers to service cards
         grid.querySelectorAll('.service-card').forEach(card => {
@@ -128,6 +151,7 @@
                 const serviceName = card.dataset.serviceName;
                 const service = services.find(s => s.name === serviceName);
                 if (service) {
+                    console.log('[Services] Opening service details for:', serviceName);
                     showServiceDetails(service);
                 }
             });
@@ -143,6 +167,10 @@
         const timeSinceLastSeen = getTimeSince(service.lastSeen);
         const isSelected = selectedService && selectedService.name === service.name;
         const podSummary = service.podSummary || { total: 0, running: 0, starting: 0, degraded: 0, terminated: 0 };
+        const logCount = service.logCount || 0;
+        const traceCount = service.traceCount || 0;
+
+        console.log(`[Services] Rendering card for ${service.name}: Status=${service.status}, Pods=${podSummary.running}/${podSummary.total}, Logs=${logCount}, Traces=${traceCount}, ErrorRate=${service.errorRate}%`);
 
         return `
             <div class="service-card ${statusClass} ${isSelected ? 'selected' : ''}" data-service-name="${service.name}">
@@ -166,11 +194,11 @@
                     </div>
                     <div class="service-stat">
                         <span class="stat-label">Logs</span>
-                        <span class="stat-value">${service.logCount || 0}</span>
+                        <span class="stat-value">${logCount.toLocaleString()}</span>
                     </div>
                     <div class="service-stat">
                         <span class="stat-label">Traces</span>
-                        <span class="stat-value">${service.traceCount || 0}</span>
+                        <span class="stat-value">${traceCount.toLocaleString()}</span>
                     </div>
                 </div>
 

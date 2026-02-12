@@ -27,17 +27,17 @@ public class ClickHouseSpansRepository {
     public List<Map<String, Object>> getTraces(UUID teamId, Instant start, Instant end,
             List<String> services, String status, Long minDuration, Long maxDuration,
             int limit, int offset) {
-        
+
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT trace_id, service_name, operation_name, start_time, end_time, ");
         sql.append("duration_ms, status, http_method, http_status_code ");
         sql.append("FROM spans WHERE team_id = ? AND is_root = 1 ");
-        sql.append("AND start_time >= ? AND start_time <= ? ");
-        
+        sql.append("AND start_time >= fromUnixTimestamp64Milli(?) AND start_time <= fromUnixTimestamp64Milli(?) ");
+
         List<Object> params = new ArrayList<>();
         params.add(teamId.toString());
-        params.add(start);
-        params.add(end);
+        params.add(start.toEpochMilli());
+        params.add(end.toEpochMilli());
         
         if (services != null && !services.isEmpty()) {
             sql.append("AND service_name IN (").append(String.join(",", 
@@ -88,9 +88,9 @@ public class ClickHouseSpansRepository {
                 "quantile(0.95)(duration_ms) as p95_duration, " +
                 "quantile(0.99)(duration_ms) as p99_duration " +
                 "FROM spans WHERE team_id = ? AND is_root = 1 " +
-                "AND start_time >= ? AND start_time <= ?";
-        
-        return jdbcTemplate.queryForMap(sql, teamId.toString(), start, end);
+                "AND start_time >= fromUnixTimestamp64Milli(?) AND start_time <= fromUnixTimestamp64Milli(?)";
+
+        return jdbcTemplate.queryForMap(sql, teamId.toString(), start.toEpochMilli(), end.toEpochMilli());
     }
 
     /**
@@ -105,10 +105,10 @@ public class ClickHouseSpansRepository {
                 "quantile(0.95)(duration_ms) as p95_latency, " +
                 "quantile(0.99)(duration_ms) as p99_latency " +
                 "FROM spans WHERE team_id = ? AND is_root = 1 " +
-                "AND start_time >= ? AND start_time <= ? " +
+                "AND start_time >= fromUnixTimestamp64Milli(?) AND start_time <= fromUnixTimestamp64Milli(?) " +
                 "GROUP BY service_name ORDER BY request_count DESC";
-        
-        return jdbcTemplate.queryForList(sql, teamId.toString(), start, end);
+
+        return jdbcTemplate.queryForList(sql, teamId.toString(), start.toEpochMilli(), end.toEpochMilli());
     }
 
     /**
@@ -125,12 +125,12 @@ public class ClickHouseSpansRepository {
         sql.append("quantile(0.95)(duration_ms) as p95_latency, ");
         sql.append("quantile(0.99)(duration_ms) as p99_latency ");
         sql.append("FROM spans WHERE team_id = ? AND span_kind = 'SERVER' ");
-        sql.append("AND start_time >= ? AND start_time <= ? ");
-        
+        sql.append("AND start_time >= fromUnixTimestamp64Milli(?) AND start_time <= fromUnixTimestamp64Milli(?) ");
+
         List<Object> params = new ArrayList<>();
         params.add(teamId.toString());
-        params.add(start);
-        params.add(end);
+        params.add(start.toEpochMilli());
+        params.add(end.toEpochMilli());
         
         if (serviceName != null) {
             sql.append("AND service_name = ? ");
@@ -154,19 +154,19 @@ public class ClickHouseSpansRepository {
             case "1d" -> "toStartOfDay";
             default -> "toStartOfMinute";
         };
-        
+
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT ").append(intervalFunc).append("(start_time) as timestamp, ");
         sql.append("count() as request_count, ");
         sql.append("countIf(status = 'ERROR') as error_count, ");
         sql.append("avg(duration_ms) as avg_latency ");
         sql.append("FROM spans WHERE team_id = ? AND is_root = 1 ");
-        sql.append("AND start_time >= ? AND start_time <= ? ");
-        
+        sql.append("AND start_time >= fromUnixTimestamp64Milli(?) AND start_time <= fromUnixTimestamp64Milli(?) ");
+
         List<Object> params = new ArrayList<>();
         params.add(teamId.toString());
-        params.add(start);
-        params.add(end);
+        params.add(start.toEpochMilli());
+        params.add(end.toEpochMilli());
         
         if (serviceName != null) {
             sql.append("AND service_name = ? ");
@@ -187,11 +187,39 @@ public class ClickHouseSpansRepository {
                 "FROM spans child " +
                 "INNER JOIN spans parent ON child.parent_span_id = parent.span_id " +
                 "AND child.team_id = parent.team_id AND child.trace_id = parent.trace_id " +
-                "WHERE child.team_id = ? AND child.start_time >= ? AND child.start_time <= ? " +
+                "WHERE child.team_id = ? AND child.start_time >= fromUnixTimestamp64Milli(?) AND child.start_time <= fromUnixTimestamp64Milli(?) " +
                 "AND parent.service_name != child.service_name " +
                 "GROUP BY source, target ORDER BY call_count DESC LIMIT 100";
-        
-        return jdbcTemplate.queryForList(sql, teamId.toString(), start, end);
+
+        return jdbcTemplate.queryForList(sql, teamId.toString(), start.toEpochMilli(), end.toEpochMilli());
+    }
+
+    /**
+     * Batch insert spans
+     */
+    public void batchInsert(List<Map<String, Object>> spans) {
+        String sql = """
+            INSERT INTO observex.spans
+            (team_id, trace_id, span_id, parent_span_id, is_root, operation_name, service_name,
+             span_kind, start_time, end_time, duration_ms, status, status_message,
+             http_method, http_url, http_status_code, host, pod, container, attributes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """;
+
+        List<Object[]> batchArgs = spans.stream()
+            .map(s -> new Object[]{
+                s.get("team_id"), s.get("trace_id"), s.get("span_id"),
+                s.get("parent_span_id"), s.get("is_root"), s.get("operation_name"),
+                s.get("service_name"), s.get("span_kind"), s.get("start_time"),
+                s.get("end_time"), s.get("duration_ms"), s.get("status"),
+                s.get("status_message"), s.get("http_method"), s.get("http_url"),
+                s.get("http_status_code"), s.get("host"), s.get("pod"),
+                s.get("container"), s.get("attributes")
+            })
+            .toList();
+
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+        log.debug("Inserted {} spans into ClickHouse", spans.size());
     }
 }
 

@@ -43,12 +43,12 @@ fi
 echo "🛑 Stopping existing frontend containers..."
 docker-compose -f docker-compose.frontend.yml down 2>/dev/null || true
 
-# Start frontend service
+# Start frontend service (rebuild to pick up any changes)
 echo ""
 echo "🐳 Starting frontend service (NGINX)..."
 echo ""
 
-docker-compose -f docker-compose.frontend.yml up -d
+docker-compose -f docker-compose.frontend.yml up -d --build
 
 echo ""
 echo "⏳ Waiting for frontend to be ready..."

@@ -33,23 +33,31 @@ public class SpanRequest {
     @NotBlank(message = "Service name is required")
     private String serviceName;
 
-    @Positive(message = "Start time must be positive")
-    private Long startTime;
+    private Boolean isRoot;
 
-    @Positive(message = "End time must be positive")
-    private Long endTime;
+    @Pattern(regexp = "SERVER|CLIENT|INTERNAL|PRODUCER|CONSUMER", message = "Invalid span kind")
+    private String spanKind;
 
-    private Long duration;
+    private String startTime;  // ISO 8601 format or timestamp
+    private String endTime;    // ISO 8601 format or timestamp
+
+    private Long durationMs;
 
     @Pattern(regexp = "OK|ERROR", message = "Status must be OK or ERROR")
     private String status;
 
-    @Pattern(regexp = "SERVER|CLIENT|INTERNAL|PRODUCER|CONSUMER", message = "Invalid span kind")
-    private String kind;
+    private String statusMessage;
 
+    // HTTP attributes
+    private String httpMethod;
+    private String httpUrl;
+    private Integer httpStatusCode;
+
+    // Infrastructure attributes
+    private String host;
     private String pod;
     private String container;
-    private String node;
+
     private Map<String, String> attributes;
 }
 

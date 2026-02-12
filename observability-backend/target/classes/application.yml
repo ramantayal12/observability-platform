@@ -41,9 +41,9 @@ observability:
     logs-days: 7
     traces-days: 7
 
-# ClickHouse feature flag (set to false to use MySQL only)
+# ClickHouse feature flag (set to true to use ClickHouse for time-series data)
 clickhouse:
-  enabled: ${CLICKHOUSE_ENABLED:false}
+  enabled: ${CLICKHOUSE_ENABLED:true}
 
 ---
 # H2 Profile (Development)

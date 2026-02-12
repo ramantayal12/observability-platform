@@ -132,26 +132,46 @@
      * Load overview data
      */
     async function loadOverview() {
-        console.log('[Overview] Loading overview data...');
+        console.log('[Overview] ========== Loading overview data ==========');
+        console.log('[Overview] Current time range:', currentTimeRange);
+
         try {
-            // Use team-specific endpoint if available, fallback to general endpoint
-            const data = await apiService.fetchTeamOverview({ timeRange: currentTimeRange });
-            console.log('[Overview] Data received:', data);
+            // Fetch overview data (stats, charts, activity)
+            const overviewData = await apiService.fetchTeamOverview({ timeRange: currentTimeRange });
+            console.log('[Overview] ========== Overview data received ==========');
+            console.log('[Overview] Full overview object:', overviewData);
+            console.log('[Overview] Stats:', overviewData.stats);
+            console.log('[Overview] Recent activity count:', overviewData.recentActivity?.length || 0);
+
+            // Fetch services data separately (includes logCount, traceCount, podSummary)
+            console.log('[Overview] Fetching services data from backend...');
+            const servicesData = await apiService.fetchServices();
+            console.log('[Overview] ========== Services data received ==========');
+            console.log('[Overview] Services count:', servicesData.services?.length || 0);
+            console.log('[Overview] Sample service:', servicesData.services?.[0]);
 
             // Update stats
-            updateStats(data.stats);
+            console.log('[Overview] Updating stats...');
+            updateStats(overviewData.stats);
 
             // Update charts
-            updateCharts(data);
+            console.log('[Overview] Updating charts...');
+            updateCharts(overviewData);
 
             // Update recent activity
-            updateRecentActivity(data.recentActivity || []);
+            console.log('[Overview] Updating recent activity...');
+            updateRecentActivity(overviewData.recentActivity || []);
 
-            // Update service health grid
-            updateServiceHealthGrid(data.services || data.apiEndpoints || []);
+            // Update service health grid with backend services data
+            console.log('[Overview] Updating service health grid with backend data...');
+            updateServiceHealthGrid(servicesData.services || []);
+
+            console.log('[Overview] ========== Overview loaded successfully ==========');
 
         } catch (error) {
-            console.error('[Overview] Error loading overview:', error);
+            console.error('[Overview] ========== Error loading overview ==========');
+            console.error('[Overview] Error details:', error);
+            console.error('[Overview] Error stack:', error.stack);
             notificationManager.error('Failed to load overview data');
         }
     }
@@ -160,40 +180,82 @@
      * Update service health grid
      */
     function updateServiceHealthGrid(services) {
+        console.log('[Overview] Updating service health grid with', services?.length || 0, 'services');
         const grid = document.getElementById('serviceHealthGrid');
-        if (!grid) return;
+        if (!grid) {
+            console.warn('[Overview] Service health grid element not found');
+            return;
+        }
 
         if (!services || services.length === 0) {
+            console.log('[Overview] No services available to display');
             grid.innerHTML = '<div class="service-health-loading">No services available</div>';
             return;
         }
 
         // Take top 8 services for the grid
         const topServices = services.slice(0, 8);
+        console.log('[Overview] Displaying top', topServices.length, 'services');
 
         grid.innerHTML = topServices.map(service => {
-            const name = service.endpoint || service.name || service.serviceName || 'Unknown';
+            // Use backend data directly - NO hardcoded values
+            const name = service.name || service.endpoint || service.serviceName || 'Unknown';
             const latency = service.avgLatency || service.latency || 0;
             const errorRate = service.errorRate || 0;
 
-            // Determine health status
-            let status = 'healthy';
-            if (errorRate > 5 || latency > 500) {
-                status = 'critical';
-            } else if (errorRate > 1 || latency > 200) {
-                status = 'degraded';
-            }
+            // Use backend logCount and traceCount directly (NO random generation)
+            const logCount = service.logCount || 0;
+            const traceCount = service.traceCount || 0;
+
+            // Use backend pod summary
+            const podSummary = service.podSummary || { total: 0, running: 0 };
+            const podCount = `${podSummary.running}/${podSummary.total}`;
+
+            // Use status from backend (already calculated)
+            const status = service.status || 'healthy';
+
+            console.log(`[Overview] Service: ${name}, Status: ${status}, Latency: ${latency}ms, Error: ${errorRate}%, Logs: ${logCount}, Traces: ${traceCount}, Pods: ${podCount}`);
 
             return `
-                <div class="service-health-card" onclick="window.location.href='services.html'">
-                    <div class="service-health-indicator ${status}"></div>
-                    <div class="service-health-info">
+                <div class="service-health-card-enhanced" onclick="window.location.href='services.html'">
+                    <div class="service-health-header">
+                        <div class="service-health-indicator ${status}"></div>
                         <div class="service-health-name">${escapeHtml(name)}</div>
-                        <div class="service-health-latency">${latency.toFixed(0)}ms avg</div>
+                    </div>
+                    <div class="service-health-metrics">
+                        <div class="service-health-metric">
+                            <span class="metric-value">${latency.toFixed(0)}ms</span>
+                            <span class="metric-label">Latency</span>
+                        </div>
+                        <div class="service-health-metric">
+                            <span class="metric-value">${errorRate.toFixed(1)}%</span>
+                            <span class="metric-label">Errors</span>
+                        </div>
+                        <div class="service-health-metric">
+                            <span class="metric-value">${podCount}</span>
+                            <span class="metric-label">Pods</span>
+                        </div>
+                    </div>
+                    <div class="service-health-footer">
+                        <div class="service-health-stat">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M0 2a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H2a2 2 0 01-2-2V2zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V2a1 1 0 00-1-1H2z"/>
+                                <path d="M2 4h12v1H2V4zm0 3h12v1H2V7zm0 3h12v1H2v-1z"/>
+                            </svg>
+                            <span>${logCount.toLocaleString()} logs</span>
+                        </div>
+                        <div class="service-health-stat">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M1 3.5a.5.5 0 01.5-.5h13a.5.5 0 010 1h-13a.5.5 0 01-.5-.5zM7.5 7a.5.5 0 000 1h1a.5.5 0 000-1h-1zM1 10.5a.5.5 0 01.5-.5h13a.5.5 0 010 1h-13a.5.5 0 01-.5-.5z"/>
+                            </svg>
+                            <span>${traceCount.toLocaleString()} traces</span>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        console.log('[Overview] Service health grid updated successfully');
     }
 
     // escapeHtml is now imported from PageUtils at the bottom of the file

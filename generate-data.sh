@@ -53,6 +53,19 @@ python3 scripts/data_generator.py \
     --clear
 
 echo ""
+echo "🔍 Querying team IDs from MySQL..."
+# Get team IDs from MySQL and convert to UUIDs (format: 00000000-0000-0000-0000-000000000031)
+TEAM_IDS=$(docker exec -i observex-mysql mysql -u observex -pobservex123 observex -N -e "SELECT id FROM teams ORDER BY id" | \
+    awk '{printf "00000000-0000-0000-0000-%012d ", $1}')
+
+if [ -z "$TEAM_IDS" ]; then
+    echo "❌ No teams found in MySQL! Run MySQL data generator first."
+    exit 1
+fi
+
+echo "  ✓ Found teams: $TEAM_IDS"
+
+echo ""
 echo "📈 Generating ClickHouse data (metrics, logs, traces)..."
 python3 scripts/clickhouse_data_generator.py \
     --host localhost \
@@ -61,6 +74,7 @@ python3 scripts/clickhouse_data_generator.py \
     --user observex \
     --password observex123 \
     --hours 24 \
+    --team-ids $TEAM_IDS \
     --clear
 
 echo ""

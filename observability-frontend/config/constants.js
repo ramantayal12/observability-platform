@@ -6,11 +6,11 @@
 const AppConfig = {
     // API Configuration
     API: {
-        BASE_URL: 'http://localhost:8080/api',
-        // Use mock endpoints from backend (set to 'real' to use actual telemetry data)
-        MODE: 'mock', // 'mock' or 'real'
+        BASE_URL: '/api',  // Use relative path - NGINX will proxy to backend
+        // Use REAL endpoints - genuine data from data generator script
+        MODE: 'real', // 'mock' or 'real'
         ENDPOINTS: {
-            // Mock endpoints (generated data from backend)
+            // Mock endpoints (DEPRECATED - will be removed)
             MOCK: {
                 OVERVIEW: '/mock/overview',
                 METRICS: '/mock/metrics',
@@ -18,7 +18,7 @@ const AppConfig = {
                 TRACES: '/mock/traces',
                 SERVICES: '/mock/services'
             },
-            // Real endpoints (actual telemetry data from database)
+            // Real endpoints (actual telemetry data from database via data generator)
             REAL: {
                 OVERVIEW: '/dashboard/overview',
                 METRICS: '/dashboard/metrics',

@@ -73,23 +73,27 @@ class ApiService {
         } = options;
 
         const url = this.buildURL(endpoint, params);
+        console.log('[ApiService] Built URL:', url, 'from endpoint:', endpoint, 'params:', params);
         const cacheKey = `${method}:${url}`;
 
         // Check cache
         if (cache && this.cache.has(cacheKey)) {
             const cached = this.cache.get(cacheKey);
             if (Date.now() - cached.timestamp < 30000) { // 30s cache
+                console.log('[ApiService] Returning cached data for:', url);
                 return cached.data;
             }
         }
 
         // Check for pending identical request
         if (this.pendingRequests.has(cacheKey)) {
+            console.log('[ApiService] Returning pending request for:', url);
             return this.pendingRequests.get(cacheKey);
         }
 
         // Get tenant headers for multi-tenancy
         const tenantHeaders = this.getTenantHeaders();
+        console.log('[ApiService] Tenant headers:', tenantHeaders);
 
         // Create request promise
         const requestPromise = this.executeRequest(url, {
@@ -177,7 +181,8 @@ class ApiService {
      * @returns {string} Complete URL
      */
     buildURL(endpoint, params = {}) {
-        const url = new URL(this.baseURL + endpoint);
+        // Handle relative URLs properly by providing window.location.origin as base
+        const url = new URL(this.baseURL + endpoint, window.location.origin);
         Object.entries(params).forEach(([key, value]) => {
             if (value !== null && value !== undefined) {
                 url.searchParams.append(key, value);
@@ -221,6 +226,7 @@ class ApiService {
      */
     async fetchOverview(filters = {}) {
         console.log('[ApiService] fetchOverview called, mode:', this.mode, 'filters:', filters);
+        console.log('[ApiService] Using endpoint:', this.endpoints.OVERVIEW);
         stateManager.set('loading.metrics', true);
         stateManager.set('errors.metrics', null);
 
@@ -235,11 +241,13 @@ class ApiService {
                 ...this.buildFilterParams(filters)
             };
 
+            console.log('[ApiService] Requesting overview with params:', params);
             const data = await this.request(this.endpoints.OVERVIEW, {
                 params,
                 cache: false
             });
 
+            console.log('[ApiService] Overview data received:', data);
             stateManager.set('cache.overview', data);
             eventBus.emit(Events.DATA_LOADED, { type: 'overview', data });
             console.log('[ApiService] Overview data loaded successfully');
@@ -406,13 +414,7 @@ class ApiService {
      */
     async fetchTrace(traceId) {
         try {
-            const teamId = this.getCurrentTeamId();
-            if (teamId) {
-                // Use team-based endpoint
-                const data = await this.request(`/api/teams/${teamId}/data/traces/${traceId}`);
-                return data;
-            }
-            // Fallback to mock endpoint
+            // Use dashboard endpoint for traces
             const data = await this.request(`${this.endpoints.TRACES}/${traceId}`);
             return data;
         } catch (error) {
@@ -508,7 +510,8 @@ class ApiService {
             const startTime = filters.timeRange ? endTime - filters.timeRange : endTime - 3600000;
 
             const params = { startTime, endTime };
-            const data = await this.request(`/teams/${teamId}/data/overview`, {
+            // Use dashboard endpoint instead of old team-based endpoint
+            const data = await this.request(this.endpoints.OVERVIEW, {
                 params,
                 cache: false
             });
@@ -521,9 +524,10 @@ class ApiService {
 
         } catch (error) {
             console.error('[ApiService] Error fetching team overview:', error);
-            stateManager.set('errors.metrics', error.message);
-            eventBus.emit(Events.DATA_ERROR, { type: 'overview', error });
-            throw error;
+            console.warn('[ApiService] Team endpoint failed, falling back to mock overview');
+            // Fallback to mock overview if team endpoint fails
+            stateManager.set('loading.metrics', false);
+            return this.fetchOverview(filters);
 
         } finally {
             stateManager.set('loading.metrics', false);
@@ -554,7 +558,8 @@ class ApiService {
                 ...this.buildFilterParams(filters)
             };
 
-            const data = await this.request(`/teams/${teamId}/data/metrics`, {
+            // Use dashboard endpoint instead of old team-based endpoint
+            const data = await this.request(this.endpoints.METRICS, {
                 params,
                 cache: false
             });
@@ -604,7 +609,8 @@ class ApiService {
                 ...this.buildFilterParams(filters)
             };
 
-            const data = await this.request(`/teams/${teamId}/data/logs`, {
+            // Use dashboard endpoint instead of old team-based endpoint
+            const data = await this.request(this.endpoints.LOGS, {
                 params,
                 cache: false
             });
@@ -655,7 +661,8 @@ class ApiService {
                 ...this.buildFilterParams(filters)
             };
 
-            const data = await this.request(`/teams/${teamId}/data/traces`, {
+            // Use dashboard endpoint instead of old team-based endpoint
+            const data = await this.request(this.endpoints.TRACES, {
                 params,
                 cache: false
             });
@@ -689,7 +696,8 @@ class ApiService {
         stateManager.set('errors.services', null);
 
         try {
-            const data = await this.request(`/teams/${teamId}/data/services`, {
+            // Use dashboard endpoint instead of old team-based endpoint
+            const data = await this.request(this.endpoints.SERVICES, {
                 cache: false
             });
 
@@ -725,14 +733,15 @@ class ApiService {
         stateManager.set('errors.alerts', null);
 
         try {
-            const params = new URLSearchParams();
-            if (filters.status) params.set('status', filters.status);
-            if (filters.severity) params.set('severity', filters.severity);
+            const params = {};
+            if (filters.status) params.status = filters.status;
+            if (filters.severity) params.severity = filters.severity;
 
-            const queryString = params.toString();
-            const url = `/teams/${resolvedTeamId}/data/alerts${queryString ? '?' + queryString : ''}`;
-
-            const data = await this.request(url, { cache: false });
+            // Use alerts endpoint
+            const data = await this.request('/alerts', {
+                params,
+                cache: false
+            });
 
             const alertsData = data.success && data.data ? data.data : data;
             stateManager.set('cache.alerts', alertsData);

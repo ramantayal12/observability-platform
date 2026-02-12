@@ -57,13 +57,36 @@ class TenantService {
             }
 
             // Restore current team from localStorage or use first team
+            // IMPORTANT: Always validate cached team exists in current teams list
             const cached = localStorage.getItem('observability_current_team');
             if (cached) {
-                const cachedTeam = JSON.parse(cached);
-                this.currentTeam = this.teams.find(t => t.id === cachedTeam.id) || this.teams[0];
+                try {
+                    const cachedTeam = JSON.parse(cached);
+                    // Only use cached team if it exists in the current teams list
+                    const validTeam = this.teams.find(t => t.id === cachedTeam.id);
+                    if (validTeam) {
+                        this.currentTeam = validTeam;
+                        console.log('[TenantService] Restored team from cache:', validTeam.name);
+                    } else {
+                        console.warn('[TenantService] Cached team not found in available teams, using first team');
+                        this.currentTeam = this.teams[0] || null;
+                        // Clear invalid cache
+                        if (this.currentTeam) {
+                            localStorage.setItem('observability_current_team', JSON.stringify(this.currentTeam));
+                        }
+                    }
+                } catch (e) {
+                    console.error('[TenantService] Failed to parse cached team:', e);
+                    this.currentTeam = this.teams[0] || null;
+                }
             } else {
                 this.currentTeam = this.teams[0] || null;
+                console.log('[TenantService] No cached team, using first team:', this.currentTeam?.name);
             }
+
+            // Log available teams for debugging
+            console.log('[TenantService] Available teams:', this.teams.map(t => `${t.name} (ID: ${t.id})`).join(', '));
+            console.log('[TenantService] Current team:', this.currentTeam?.name, '(ID:', this.currentTeam?.id, ')');
 
             // Update state manager
             if (window.stateManager) {

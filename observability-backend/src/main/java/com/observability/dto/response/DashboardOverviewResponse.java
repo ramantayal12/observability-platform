@@ -28,7 +28,7 @@ public class DashboardOverviewResponse {
     @AllArgsConstructor
     public static class MetricsSummary {
         private long count;
-        private List<MetricResponse> recent;
+        private List<Map<String, Object>> recent;  // Raw maps from ClickHouse
         private Map<String, Double> statistics;
     }
 
@@ -38,7 +38,7 @@ public class DashboardOverviewResponse {
     @AllArgsConstructor
     public static class LogsSummary {
         private long count;
-        private List<LogResponse> recent;
+        private List<Map<String, Object>> recent;  // Raw maps from ClickHouse
         private Map<String, Long> levelCounts;
     }
 
@@ -48,7 +48,7 @@ public class DashboardOverviewResponse {
     @AllArgsConstructor
     public static class TracesSummary {
         private long count;
-        private List<TraceResponse> recent;
+        private List<Map<String, Object>> recent;  // Raw maps from ClickHouse
         private Map<String, Long> statusCounts;
     }
 

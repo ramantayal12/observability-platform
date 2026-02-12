@@ -6,6 +6,9 @@ mysql-connector-python>=8.0.0
 # ClickHouse data generator
 clickhouse-connect>=0.7.0
 
+# HTTP requests for API ingestion
+requests>=2.31.0
+
 # Common utilities
 python-dateutil>=2.8.0
 

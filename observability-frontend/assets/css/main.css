@@ -392,7 +392,8 @@ body {
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    z-index: 50;
+    z-index: 90;
+    position: relative;
 }
 
 .topbar-left {
@@ -510,6 +511,10 @@ body {
     transform: rotate(180deg);
 }
 
+.time-picker {
+    position: relative;
+}
+
 .time-picker-dropdown {
     position: absolute;
     top: calc(100% + var(--space-xs));
@@ -521,7 +526,7 @@ body {
     box-shadow: var(--shadow-lg);
     padding: 0;
     display: none;
-    z-index: 1000;
+    z-index: 1001;
     overflow: hidden;
 }
 

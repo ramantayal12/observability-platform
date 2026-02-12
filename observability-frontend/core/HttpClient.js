@@ -327,7 +327,7 @@ class HttpClient {
     static getInstance() {
         if (!HttpClient.instance) {
             HttpClient.instance = new HttpClient({
-                baseURL: AppConfig?.API?.BASE_URL || 'http://localhost:8080/api',
+                baseURL: AppConfig?.API?.BASE_URL || '/api',  // Use relative path - NGINX will proxy to backend
                 timeout: AppConfig?.API?.TIMEOUT || 30000
             });
         }
